@@ -1,26 +1,129 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Morrogallo — sistema de diseño
+   Paleta derivada de la bandera del Municipio Fernando de Peñalver.
+   Los hex son aproximación razonable: confirmar con la Alcaldía
+   antes de producción.
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Mar — azul de la bandera */
+  --mar-900: #0e3556;
+  --mar-700: #1a5580;
+  --mar-500: #2f7fae;
+  --mar-200: #c3dceb;
+
+  /* Monte — verde */
+  --monte-800: #1f4a28;
+  --monte-600: #3b7a44;
+  --monte-400: #6ba26e;
+
+  /* Arena — beige */
+  --arena-50: #fbf4e4;
+  --arena-100: #f3e5c6;
+  --arena-200: #e7d2a1;
+
+  /* Estrella — rojo de acción */
+  --estrella-500: #c23b2e;
+  --estrella-600: #a02e22;
+
+  /* Tinta — texto */
+  --tinta-900: #182620;
+  --tinta-600: #48594f;
+  --tinta-400: #77897e;
+
+  /* Movimiento */
+  --ease-morro: cubic-bezier(0.22, 0.68, 0, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-mar-900: var(--mar-900);
+  --color-mar-700: var(--mar-700);
+  --color-mar-500: var(--mar-500);
+  --color-mar-200: var(--mar-200);
+
+  --color-monte-800: var(--monte-800);
+  --color-monte-600: var(--monte-600);
+  --color-monte-400: var(--monte-400);
+
+  --color-arena-50: var(--arena-50);
+  --color-arena-100: var(--arena-100);
+  --color-arena-200: var(--arena-200);
+
+  --color-estrella-500: var(--estrella-500);
+  --color-estrella-600: var(--estrella-600);
+
+  --color-tinta-900: var(--tinta-900);
+  --color-tinta-600: var(--tinta-600);
+  --color-tinta-400: var(--tinta-400);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-public-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+
+  --ease-morro: var(--ease-morro);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--arena-50);
+  color: var(--tinta-900);
+  font-family: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--mar-200);
+  color: var(--mar-900);
+}
+
+/* ------------------------------------------------------------
+   REGLA CRÍTICA: todo debe verse sin JavaScript.
+   .reveal NO se oculta por defecto. Solo cuando el script inline
+   del <head> marca html.js asumimos que hay JS y podemos animar.
+   El visor in-app de WhatsApp no corre scripts: allí el contenido
+   simplemente aparece, sin animación y sin quedar en blanco.
+   ------------------------------------------------------------ */
+.reveal {
+  opacity: 1;
+  transform: none;
+}
+
+html.js .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s var(--ease-morro),
+    transform 0.7s var(--ease-morro);
+  will-change: opacity, transform;
+}
+
+html.js .reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  html.js .reveal,
+  html.js .reveal.visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Cifras: tabulares y sin ligaduras, para que no bailen al actualizarse */
+.cifra {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
