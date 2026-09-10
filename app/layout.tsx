@@ -47,8 +47,12 @@ const marcarJs = `document.documentElement.classList.add('js')`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // El script de abajo le añade la clase "js" al <html> antes de que React
+    // hidrate, así que el className del servidor y el del cliente difieren a
+    // propósito. suppressHydrationWarning aplica solo a este nodo.
     <html
       lang="es"
+      suppressHydrationWarning
       className={`${fraunces.variable} ${publicSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <head>
