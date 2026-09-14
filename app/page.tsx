@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
@@ -132,6 +133,18 @@ export default async function Home({
     data: { user },
   } = await supabase.auth.getUser();
 
+  const { data: perfil } = user
+    ? await supabase
+        .from("perfiles")
+        .select("nombre_visible, foto_url")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  // El correo es el respaldo: alguien recién registrado puede no tener nombre.
+  const comoSeLlama =
+    perfil?.nombre_visible?.trim() || user?.email?.split("@")[0] || "Mi perfil";
+
   const { data: parroquias, error } = await supabase
     .from("parroquias")
     .select("id, nombre, es_capital")
@@ -185,12 +198,24 @@ export default async function Home({
 
           {user ? (
             <div className="flex items-center gap-4">
-              <span
-                className="cifra hidden sm:inline text-[11px] text-tinta-600 max-w-[16ch] truncate"
+              <Link
+                href="/perfil"
+                className="flex items-center gap-3 group"
                 title={user.email ?? ""}
               >
-                {user.email}
-              </span>
+                {perfil?.foto_url ? (
+                  <Image
+                    src={perfil.foto_url}
+                    alt=""
+                    width={28}
+                    height={28}
+                    className="w-7 h-7 object-cover border border-arena-200"
+                  />
+                ) : null}
+                <span className="text-sm text-tinta-600 group-hover:text-tinta-900 max-w-[16ch] truncate transition-colors">
+                  {comoSeLlama}
+                </span>
+              </Link>
               <form action={cerrarSesion}>
                 <button
                   type="submit"
