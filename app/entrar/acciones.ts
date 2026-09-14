@@ -49,6 +49,7 @@ export async function registrarse(formData: FormData) {
   const correo = String(formData.get("correo") ?? "").trim();
   const clave = String(formData.get("clave") ?? "");
   const parroquiaId = String(formData.get("parroquia") ?? "");
+  const nombre = String(formData.get("nombre") ?? "").trim();
 
   if (!correo || !clave) {
     volver({ error: "Faltan el correo o la contraseña.", modo: "registro" });
@@ -71,8 +72,9 @@ export async function registrarse(formData: FormData) {
     password: clave,
     options: {
       emailRedirectTo: `${await origen()}/auth/confirmar`,
-      // Viaja en raw_user_meta_data. De aquí lo toma el perfil.
-      data: { parroquia_id: parroquiaId },
+      // Viaja en raw_user_meta_data. De aquí lo toma el trigger que crea
+      // la fila en perfiles (supabase/perfil_al_registrarse.sql).
+      data: { parroquia_id: parroquiaId, nombre_visible: nombre },
     },
   });
 

@@ -119,6 +119,25 @@ export default async function Entrar({
 
           {esRegistro ? (
             <div>
+              <label className={etiqueta} htmlFor="nombre">
+                Cómo quieres que te vean
+              </label>
+              <input
+                className={campo}
+                id="nombre"
+                name="nombre"
+                type="text"
+                maxLength={60}
+                placeholder="Tu nombre o apodo"
+              />
+              <p className="text-xs text-tinta-400 mt-2">
+                Es lo que aparece junto a tus fotos y aportes. Opcional.
+              </p>
+            </div>
+          ) : null}
+
+          {esRegistro ? (
+            <div>
               <label className={etiqueta} htmlFor="parroquia">
                 Tu parroquia
               </label>
