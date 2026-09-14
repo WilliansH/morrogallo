@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 
+import { cerrarSesion } from "./entrar/acciones";
+
 export const revalidate = 300;
 
 type Parroquia = {
@@ -118,8 +120,17 @@ function Ficha({
   );
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ bienvenida?: string }>;
+}) {
+  const { bienvenida } = await searchParams;
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: parroquias, error } = await supabase
     .from("parroquias")
@@ -172,16 +183,44 @@ export default async function Home() {
             </li>
           </ul>
 
-          <Link
-            href="/entrar"
-            className="cifra text-xs uppercase tracking-[0.14em] bg-estrella-500 hover:bg-estrella-600 text-arena-50 px-4 py-2 transition-colors"
-          >
-            Entrar
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-4">
+              <span
+                className="cifra hidden sm:inline text-[11px] text-tinta-600 max-w-[16ch] truncate"
+                title={user.email ?? ""}
+              >
+                {user.email}
+              </span>
+              <form action={cerrarSesion}>
+                <button
+                  type="submit"
+                  className="cifra text-xs uppercase tracking-[0.14em] border border-arena-200 text-tinta-600 hover:text-tinta-900 hover:border-tinta-400 px-4 py-2 transition-colors"
+                >
+                  Salir
+                </button>
+              </form>
+            </div>
+          ) : (
+            <Link
+              href="/entrar"
+              className="cifra text-xs uppercase tracking-[0.14em] bg-estrella-500 hover:bg-estrella-600 text-arena-50 px-4 py-2 transition-colors"
+            >
+              Entrar
+            </Link>
+          )}
         </nav>
       </header>
 
       <main className="flex-1">
+        {bienvenida ? (
+          <p
+            role="status"
+            className="mx-auto max-w-6xl px-6 pt-6 cifra text-sm text-monte-600"
+          >
+            Cuenta confirmada. Bienvenido a Morrogallo.
+          </p>
+        ) : null}
+
         {/* ---------------- Hero ---------------- */}
         <section className="bg-mar-900 text-arena-50">
           <div className="mx-auto max-w-6xl px-6 py-20 md:py-28 grid md:grid-cols-2 gap-14 items-center">
@@ -352,14 +391,16 @@ export default async function Home() {
               ))}
             </ol>
 
-            <div className="reveal mt-14">
-              <Link
-                href="/entrar"
-                className="cifra text-xs uppercase tracking-[0.14em] bg-estrella-500 hover:bg-estrella-600 text-arena-50 px-6 py-3 inline-block transition-colors"
-              >
-                Crear mi cuenta
-              </Link>
-            </div>
+            {user ? null : (
+              <div className="reveal mt-14">
+                <Link
+                  href="/entrar?modo=registro"
+                  className="cifra text-xs uppercase tracking-[0.14em] bg-estrella-500 hover:bg-estrella-600 text-arena-50 px-6 py-3 inline-block transition-colors"
+                >
+                  Crear mi cuenta
+                </Link>
+              </div>
+            )}
           </div>
         </section>
       </main>
