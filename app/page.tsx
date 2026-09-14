@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 import { cerrarSesion } from "./entrar/acciones";
+import Ticker from "./ticker";
 
 export const revalidate = 300;
 
@@ -156,20 +157,7 @@ export default async function Home({
   return (
     <>
       {/* ---------------- Ticker ---------------- */}
-      <div className="bg-tinta-900 text-arena-100">
-        <div className="mx-auto max-w-6xl px-6 py-2 flex flex-wrap items-center gap-x-8 gap-y-1 cifra text-[11px] uppercase tracking-[0.14em]">
-          {/* TODO: alimentar desde valores_referencia (BCV por API route, UCD por panel de admin). */}
-          <span>
-            BCV <span className="text-tinta-400">pendiente</span>
-          </span>
-          <span>
-            UCD <span className="text-tinta-400">pendiente</span>
-          </span>
-          <span className="ml-auto text-tinta-400 normal-case tracking-normal">
-            Anzoátegui, Venezuela
-          </span>
-        </div>
-      </div>
+      <Ticker />
 
       {/* ---------------- Nav ---------------- */}
       <header className="sticky top-0 z-50 bg-arena-50/90 backdrop-blur border-b border-arena-200">

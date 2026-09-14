@@ -37,7 +37,7 @@ export default async function Perfil({
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("nombre_visible, telefono, direccion, foto_url, parroquia_id")
+    .select("nombre_visible, telefono, direccion, foto_url, parroquia_id, es_admin")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -59,6 +59,15 @@ export default async function Perfil({
 
         <h1 className="font-display text-4xl mt-6">Mi perfil</h1>
         <p className="cifra text-sm text-tinta-400 mt-2">{user.email}</p>
+
+        {perfil?.es_admin ? (
+          <Link
+            href="/admin/ucd"
+            className="cifra inline-block mt-4 text-[11px] uppercase tracking-[0.14em] border border-arena-200 text-tinta-600 hover:text-tinta-900 hover:border-tinta-400 px-4 py-2 transition-colors"
+          >
+            Publicar UCD
+          </Link>
+        ) : null}
 
         {error ? (
           <p
