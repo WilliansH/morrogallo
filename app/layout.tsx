@@ -23,7 +23,21 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
+/**
+ * De dónde cuelgan las URL absolutas de las imágenes de compartir. Sin esto,
+ * Next las resuelve contra localhost y el preview de WhatsApp sale roto.
+ * En Vercel, VERCEL_PROJECT_PRODUCTION_URL siempre apunta al dominio de
+ * producción, también desde un deploy de preview. Cuando haya dominio propio,
+ * se pone NEXT_PUBLIC_SITE_URL y manda esa.
+ */
+const dondeVive =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3210");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(dondeVive),
   title: {
     default: "Morrogallo — datos y voces del estado Anzoátegui",
     template: "%s · Morrogallo",
