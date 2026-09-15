@@ -7,6 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 import { cambiarClave, guardarDatos, subirFoto } from "./acciones";
 import ComprimirFoto from "./comprimir-foto";
 
+import Footer from "../footer";
+import Nav from "../nav";
+import Ticker from "../ticker";
+
 export const metadata = { title: "Mi perfil" };
 
 const campo =
@@ -48,7 +52,11 @@ export default async function Perfil({
     .order("nombre", { ascending: true });
 
   return (
-    <main className="flex-1 bg-arena-50">
+    <>
+      <Ticker />
+      <Nav />
+
+      <main className="flex-1 bg-arena-50">
       <div className="mx-auto max-w-2xl px-6 py-16 md:py-20">
         <Link
           href="/"
@@ -242,5 +250,8 @@ export default async function Perfil({
         </form>
       </div>
     </main>
+
+      <Footer />
+    </>
   );
 }

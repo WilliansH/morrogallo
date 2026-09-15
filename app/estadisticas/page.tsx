@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 
 import { aportarEstadistica, cambiarSello } from "./acciones";
 
+import Footer from "../footer";
+import Nav from "../nav";
+import Ticker from "../ticker";
+
 export const metadata = {
   title: "Estadísticas",
   description:
@@ -166,7 +170,11 @@ export default async function Estadisticas({
   );
 
   return (
-    <main className="flex-1 bg-arena-50">
+    <>
+      <Ticker />
+      <Nav />
+
+      <main className="flex-1 bg-arena-50">
       <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
         <Link
           href="/"
@@ -179,9 +187,7 @@ export default async function Estadisticas({
         <p className="text-sm text-tinta-600 mt-3 leading-relaxed max-w-2xl">
           Las cifras del municipio las carga el equipo del portal, y cada una
           dice de dónde salió. Ninguna se edita: si aparece un número mejor, se
-          agrega y queda el anterior para comparar. Las que están respaldadas
-          por un documento se marcan como verificadas; las demás quedan en
-          revisión hasta tener el papel en la mano.
+          agrega y queda el anterior para comparar.
         </p>
 
         {error ? (
@@ -438,5 +444,8 @@ export default async function Estadisticas({
         </div>
       </div>
     </main>
+
+      <Footer />
+    </>
   );
 }
