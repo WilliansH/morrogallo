@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 import { ocultar, publicar, votar } from "./acciones-feed";
+import BotonPublicar from "./boton-publicar";
 import ComprimirImagen from "./comprimir-imagen";
 import Footer from "./footer";
 import Morrogallo from "./morrogallo";
@@ -160,6 +161,14 @@ export default async function Feed({
   const esAdmin = Boolean(miPerfil?.es_admin);
   const miNombre = (miPerfil?.nombre_visible as string | null)?.trim().split(" ")[0] ?? "";
 
+  /*
+   * Llave de un solo uso para esta carga de la página. Si el botón de
+   * publicar se aprieta dos veces, el segundo envío trae la misma llave y la
+   * base lo rechaza: el índice único de clave_envio es el que decide, no una
+   * comprobación en el servidor que dos peticiones a la vez podrían burlar.
+   */
+  const claveEnvio = crypto.randomUUID();
+
   function enlace(cambios: Record<string, string | undefined>) {
     const p = new URLSearchParams();
     const base = { orden, parroquia, ...cambios };
@@ -272,6 +281,7 @@ export default async function Feed({
               </summary>
 
               <form action={publicar} className="px-4 pb-5">
+              <input type="hidden" name="clave" value={claveEnvio} />
               <div className="flex flex-col gap-5 mt-1">
                 <div className="grid sm:grid-cols-2 gap-5">
                   <div>
@@ -335,9 +345,9 @@ export default async function Feed({
                 </div>
               </div>
 
-              <button className={`${boton} mt-6`} type="submit">
+              <BotonPublicar className={`${boton} mt-6`} enviando="Publicando…">
                 Publicar
-              </button>
+              </BotonPublicar>
               </form>
             </details>
           ) : null}

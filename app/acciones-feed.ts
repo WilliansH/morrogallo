@@ -86,6 +86,7 @@ export async function publicar(formData: FormData) {
   const titulo = String(formData.get("titulo") ?? "").trim();
   const descripcion = String(formData.get("descripcion") ?? "").trim();
   const parroquia = String(formData.get("parroquia") ?? "");
+  const clave = String(formData.get("clave") ?? "").trim();
 
   if (!TIPOS.includes(tipo as (typeof TIPOS)[number])) {
     volver({ error: "Elige si es una noticia, una reseña o una foto." });
@@ -118,9 +119,14 @@ export async function publicar(formData: FormData) {
     descripcion: descripcion || null,
     imagen_url: imagen.url,
     imagen_mini_url: imagen.mini,
+    // Llave de un solo uso, generada al pintar el formulario.
+    clave_envio: clave || null,
   });
 
-  if (error) {
+  // 23505 es el índice único de la llave: este envío ya había entrado. No es
+  // un error para quien publicó — su publicación está ahí. Se le dice que sí
+  // y se acabó.
+  if (error && error.code !== "23505") {
     volver({ error: error.message });
   }
 
