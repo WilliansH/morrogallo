@@ -51,51 +51,101 @@ export async function guardarDatos(formData: FormData) {
   volver({ aviso: "Datos guardados." });
 }
 
+/** De la URL pública saca la ruta dentro del bucket, para poder borrarla. */
+function rutaDe(url: string | null | undefined) {
+  if (!url) return null;
+  const marca = "/object/public/fotos/";
+  const i = url.indexOf(marca);
+  return i === -1 ? null : decodeURIComponent(url.slice(i + marca.length));
+}
+
+/**
+ * Subir la foto de perfil.
+ *
+ * Guarda dos: la de 512px para el panel y un avatar de 96px, que es el que
+ * sale en el feed y en la barra. Antes el feed bajaba la foto de 512px para
+ * mostrarla a 32 píxeles, veinte veces por pantalla: pesaba más que todas las
+ * miniaturas de las publicaciones juntas.
+ *
+ * Y borra las anteriores: si no, cada cambio de foto deja un archivo ocupando
+ * storage para siempre que ya nadie va a ver.
+ */
 export async function subirFoto(formData: FormData) {
   const { supabase, user } = await usuarioActual();
 
-  const archivo = formData.get("foto");
+  const archivos = formData
+    .getAll("foto")
+    .filter(
+      (a): a is File => a instanceof File && a.size > 0 && a.type.startsWith("image/")
+    );
 
-  if (!(archivo instanceof File) || archivo.size === 0) {
+  if (archivos.length === 0) {
     volver({ error: "Elige una imagen primero." });
     return;
   }
 
-  if (!archivo.type.startsWith("image/")) {
-    volver({ error: "Ese archivo no es una imagen." });
+  if (archivos.some((a) => a.size > MAX_FOTO)) {
+    volver({ error: "La imagen pesa más de 5 MB. Prueba con una más liviana." });
     return;
   }
 
-  if (archivo.size > MAX_FOTO) {
-    volver({
-      error: "La imagen pesa más de 5 MB. Prueba con una más liviana.",
+  // Con JavaScript llegan dos archivos; sin JavaScript llega el original y
+  // sirve para las dos cosas.
+  const mini = archivos.find((a) => a.name.startsWith("mini")) ?? archivos[0];
+  const grande = archivos.find((a) => a.name.startsWith("grande")) ?? archivos[0];
+  const sello = Date.now();
+
+  async function guardar(archivo: File, sufijo: string) {
+    const extension =
+      archivo.type === "image/webp" ? "webp" : archivo.type === "image/png" ? "png" : "jpg";
+    const ruta = `${user.id}/perfil-${sello}-${sufijo}.${extension}`;
+
+    const { error } = await supabase.storage.from("fotos").upload(ruta, archivo, {
+      contentType: archivo.type,
+      upsert: true,
+      // Un año: la ruta lleva la marca de tiempo, así que su contenido nunca
+      // cambia. Quien ya la vio no la vuelve a bajar.
+      cacheControl: "31536000",
     });
+
+    if (error) return null;
+
+    return supabase.storage.from("fotos").getPublicUrl(ruta).data.publicUrl;
+  }
+
+  const { data: anterior } = await supabase
+    .from("perfiles")
+    .select("foto_url, foto_mini_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const urlGrande = await guardar(grande, "grande");
+
+  if (!urlGrande) {
+    volver({ error: "No se pudo subir la foto." });
     return;
   }
 
-  const extension = archivo.type === "image/png" ? "png" : "jpg";
-  const ruta = `${user.id}/perfil-${Date.now()}.${extension}`;
-
-  const { error: errorSubida } = await supabase.storage
-    .from("fotos")
-    .upload(ruta, archivo, { contentType: archivo.type, upsert: true });
-
-  if (errorSubida) {
-    volver({ error: `No se pudo subir la foto: ${errorSubida.message}` });
-    return;
-  }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("fotos").getPublicUrl(ruta);
+  const urlMini = mini === grande ? urlGrande : ((await guardar(mini, "mini")) ?? urlGrande);
 
   const { error } = await supabase
     .from("perfiles")
-    .update({ foto_url: publicUrl })
+    .update({ foto_url: urlGrande, foto_mini_url: urlMini })
     .eq("id", user.id);
 
   if (error) {
     volver({ error: error.message });
+    return;
+  }
+
+  const viejas = [rutaDe(anterior?.foto_url), rutaDe(anterior?.foto_mini_url)].filter(
+    (r): r is string => Boolean(r)
+  );
+
+  if (viejas.length > 0) {
+    // Si la política de storage no deja borrar, no pasa nada: la foto nueva
+    // ya quedó guardada y eso es lo que importa.
+    await supabase.storage.from("fotos").remove(viejas);
   }
 
   revalidatePath("/perfil");

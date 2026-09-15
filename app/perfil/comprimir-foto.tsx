@@ -2,17 +2,21 @@
 
 import { useRef, useState } from "react";
 
-const LADO_MAX = 512;
-const CALIDAD = 0.82;
+import { reducir } from "../comprimir";
+
+const LADO_GRANDE = 512;
+const LADO_MINI = 96;
 
 /**
- * Mejora progresiva: si hay JavaScript, la foto se redimensiona en el
- * navegador antes de subirla. Sin JavaScript el input se comporta como
- * cualquier input de archivo y sube el original.
+ * De la foto de perfil salen dos: una de 512px para el panel y una de 96px
+ * para el avatar del feed y de la barra, que se ven a 28 y 32 píxeles.
  *
- * No es cosmético: el plan gratuito de Supabase da 1 GB de storage y 5 GB
- * de egress al mes. Una foto de celular sin tocar pesa 3-5 MB; esta pesa
- * unos 60 KB.
+ * La mini es la que importa: el feed muestra veinte avatares por pantalla, y
+ * con la foto grande eso pesaba más que todas las miniaturas de las
+ * publicaciones juntas.
+ *
+ * Mejora progresiva: sin JavaScript el input se comporta como cualquier input
+ * de archivo y sube el original.
  */
 export default function ComprimirFoto({ className }: { className?: string }) {
   const input = useRef<HTMLInputElement>(null);
@@ -23,31 +27,22 @@ export default function ComprimirFoto({ className }: { className?: string }) {
     if (!archivo || !archivo.type.startsWith("image/")) return;
 
     try {
-      const mapa = await createImageBitmap(archivo);
-      const escala = Math.min(1, LADO_MAX / Math.max(mapa.width, mapa.height));
+      const [mini, grande] = await Promise.all([
+        reducir(archivo, LADO_MINI, "mini"),
+        reducir(archivo, LADO_GRANDE, "grande"),
+      ]);
 
-      const lienzo = document.createElement("canvas");
-      lienzo.width = Math.round(mapa.width * escala);
-      lienzo.height = Math.round(mapa.height * escala);
+      if (!mini || !grande) return;
 
-      const ctx = lienzo.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(mapa, 0, 0, lienzo.width, lienzo.height);
-
-      const blob = await new Promise<Blob | null>((listo) =>
-        lienzo.toBlob(listo, "image/jpeg", CALIDAD)
-      );
-      if (!blob || blob.size >= archivo.size) return;
-
-      const reducida = new File([blob], "perfil.jpg", { type: "image/jpeg" });
       const bolsa = new DataTransfer();
-      bolsa.items.add(reducida);
+      bolsa.items.add(mini);
+      bolsa.items.add(grande);
       if (input.current) input.current.files = bolsa.files;
 
       setNota(
-        `Lista para subir: ${Math.round(blob.size / 1024)} KB (original ${Math.round(
-          archivo.size / 1024
-        )} KB).`
+        `Lista para subir: ${Math.round(grande.size / 1024)} KB y avatar de ${Math.round(
+          mini.size / 1024
+        )} KB (original ${Math.round(archivo.size / 1024)} KB).`
       );
     } catch {
       // Si algo falla se sube el original y ya.
@@ -63,6 +58,7 @@ export default function ComprimirFoto({ className }: { className?: string }) {
         name="foto"
         type="file"
         accept="image/*"
+        multiple
         onChange={alElegir}
         required
       />

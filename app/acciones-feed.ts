@@ -29,7 +29,7 @@ async function usuarioActual() {
 /**
  * Sube una imagen al bucket y devuelve las dos URLs.
  *
- * Con JavaScript llegan dos archivos (mini.jpg y grande.jpg). Sin JavaScript
+ * Con JavaScript llegan dos archivos (mini y grande). Sin JavaScript
  * llega uno solo, el original: se usa para las dos cosas y se acabó, que es
  * mejor que no poder publicar.
  */
@@ -50,11 +50,18 @@ async function subirImagen(
   const sello = Date.now();
 
   async function guardar(archivo: File, sufijo: string) {
-    const ruta = `${usuarioId}/pub-${sello}-${sufijo}.jpg`;
+    const extension =
+      archivo.type === "image/webp" ? "webp" : archivo.type === "image/png" ? "png" : "jpg";
+    const ruta = `${usuarioId}/pub-${sello}-${sufijo}.${extension}`;
 
-    const { error } = await supabase.storage
-      .from("fotos")
-      .upload(ruta, archivo, { contentType: archivo.type, upsert: true });
+    const { error } = await supabase.storage.from("fotos").upload(ruta, archivo, {
+      contentType: archivo.type,
+      upsert: true,
+      // Un año. El nombre lleva la marca de tiempo, así que nunca cambia el
+      // contenido de una ruta: quien ya vio la foto no la vuelve a bajar, y
+      // eso es egress que no se gasta.
+      cacheControl: "31536000",
+    });
 
     if (error) return null;
 

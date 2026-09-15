@@ -20,7 +20,7 @@ export default async function Nav() {
   const { data: perfil } = user
     ? await supabase
         .from("perfiles")
-        .select("nombre_visible, foto_url")
+        .select("nombre_visible, foto_url, foto_mini_url")
         .eq("id", user.id)
         .maybeSingle()
     : { data: null };
@@ -63,12 +63,13 @@ export default async function Nav() {
             className="flex items-center gap-3 group"
             title={user.email ?? ""}
           >
-            {perfil?.foto_url ? (
+            {perfil?.foto_mini_url || perfil?.foto_url ? (
               <Image
-                src={perfil.foto_url}
+                src={(perfil.foto_mini_url ?? perfil.foto_url) as string}
                 alt=""
-                width={28}
-                height={28}
+                width={56}
+                height={56}
+                unoptimized
                 className="w-7 h-7 object-cover border border-arena-200"
               />
             ) : null}

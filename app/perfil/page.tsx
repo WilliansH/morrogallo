@@ -37,7 +37,7 @@ export default async function Perfil({
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("nombre_visible, telefono, direccion, foto_url, parroquia_id, es_admin")
+    .select("nombre_visible, telefono, direccion, foto_url, parroquia_id, es_admin, foto_mini_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -92,12 +92,13 @@ export default async function Perfil({
           <h2 className={titulo}>Foto</h2>
 
           <div className="flex items-center gap-6 mt-5">
-            {perfil?.foto_url ? (
+            {perfil?.foto_mini_url || perfil?.foto_url ? (
               <Image
-                src={perfil.foto_url}
+                src={(perfil.foto_mini_url ?? perfil.foto_url) as string}
                 alt="Tu foto de perfil"
-                width={80}
-                height={80}
+                width={96}
+                height={96}
+                unoptimized
                 className="w-20 h-20 object-cover border border-arena-200"
               />
             ) : (

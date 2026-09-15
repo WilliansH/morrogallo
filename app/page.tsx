@@ -122,13 +122,13 @@ export default async function Feed({
   if (idsAutores.length > 0) {
     const { data: perfiles } = await supabase
       .from("perfiles_publicos")
-      .select("id, nombre_visible, foto_url")
+      .select("id, nombre_visible, foto_url, foto_mini_url")
       .in("id", idsAutores);
 
     for (const p of perfiles ?? []) {
       autores.set(p.id as string, {
         nombre: (p.nombre_visible as string) ?? null,
-        foto: (p.foto_url as string) ?? null,
+        foto: ((p.foto_mini_url ?? p.foto_url) as string) ?? null,
       });
     }
   }
@@ -152,7 +152,7 @@ export default async function Feed({
   const { data: miPerfil } = user
     ? await supabase
         .from("perfiles")
-        .select("es_admin, nombre_visible, foto_url")
+        .select("es_admin, nombre_visible, foto_url, foto_mini_url")
         .eq("id", user.id)
         .maybeSingle()
     : { data: null };
@@ -251,9 +251,9 @@ export default async function Feed({
              */
             <details open={Boolean(error)} className="border border-arena-200 bg-white/60 mb-8">
               <summary className="flex items-center gap-3 p-4">
-                {miPerfil?.foto_url ? (
+                {miPerfil?.foto_mini_url || miPerfil?.foto_url ? (
                   <Image
-                    src={miPerfil.foto_url as string}
+                    src={(miPerfil.foto_mini_url ?? miPerfil.foto_url) as string}
                     alt=""
                     width={36}
                     height={36}
