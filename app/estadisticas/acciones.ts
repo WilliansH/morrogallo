@@ -9,7 +9,15 @@ function volver(params: Record<string, string>): never {
   redirect(`/estadisticas?${new URLSearchParams(params).toString()}`);
 }
 
-async function usuarioActual() {
+/**
+ * Las cifras del municipio las carga el equipo, no la comunidad: la gente
+ * participa en el feed con fotos, reseñas y respaldos.
+ *
+ * Esta comprobación es para dar un mensaje decente, no para proteger. Quien
+ * protege es la base: las políticas de public.estadisticas solo dejan escribir
+ * a un admin, así que llamar a la API por fuera del sitio tampoco sirve.
+ */
+async function adminActual() {
   const supabase = await createClient();
 
   const {
@@ -20,24 +28,38 @@ async function usuarioActual() {
     redirect("/entrar");
   }
 
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("es_admin")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!perfil?.es_admin) {
+    volver({
+      error:
+        "Las cifras del municipio las carga el equipo del portal. Lo del pueblo se publica en el feed.",
+    });
+  }
+
   return { supabase, user };
 }
 
 /**
- * Aportar un dato.
+ * Cargar un dato.
  *
- * No edita nada: cada aporte es una fila nueva, y el estado lo pone la base.
- * La fuente es obligatoria — es la regla que sostiene todo el sitio: ninguna
- * cifra se presenta como cierta porque sí.
+ * No edita nada: cada carga es una fila nueva, y la anterior queda para
+ * comparar. La fuente es obligatoria — es la regla que sostiene todo el sitio:
+ * ninguna cifra se presenta como cierta porque sí.
  */
 export async function aportarEstadistica(formData: FormData) {
-  const { supabase, user } = await usuarioActual();
+  const { supabase, user } = await adminActual();
 
   const tipo = String(formData.get("tipo") ?? "").trim();
   const valor = String(formData.get("valor") ?? "").trim();
   const fuente = String(formData.get("fuente") ?? "").trim();
   const fecha = String(formData.get("fecha") ?? "").trim();
   const ambito = String(formData.get("ambito") ?? "");
+  const estado = String(formData.get("estado") ?? "en_revision");
 
   if (tipo.length < 3) {
     volver({ error: "Dile qué mides: «población», «centros de salud», lo que sea." });
@@ -52,6 +74,10 @@ export async function aportarEstadistica(formData: FormData) {
       error:
         "Falta la fuente. Sin decir de dónde salió el número, el dato no entra: esa es la regla del sitio.",
     });
+  }
+
+  if (estado !== "verificado" && estado !== "en_revision") {
+    volver({ error: "Ese sello no existe." });
   }
 
   // El ámbito viene como "municipio:<id>" o "parroquia:<id>".
@@ -86,8 +112,8 @@ export async function aportarEstadistica(formData: FormData) {
     fuente,
     // Un dato sin fecha es un dato sin contexto, pero no todos la tienen.
     fecha_dato: fecha || null,
+    estado,
     creado_por: user.id,
-    // estado y corroboraciones_count los pone la base, no la app.
   });
 
   if (error) {
@@ -95,86 +121,51 @@ export async function aportarEstadistica(formData: FormData) {
   }
 
   revalidatePath("/estadisticas");
-  revalidatePath("/");
-  volver({ aviso: "Aporte publicado. Ahora les toca a los vecinos corroborarlo." });
-}
-
-/**
- * Corroborar o poner en duda un dato.
- *
- * La app solo inserta la fila. Todo lo demás lo hace la base:
- * trg_bloquear_autocorroboracion impide corroborarse a uno mismo y
- * trg_recalcular_estado lleva la cuenta y mueve el estado (tres corroboraciones
- * verifican, un reporte devuelve a revisión). Duplicar esa lógica aquí sería
- * tener dos verdades.
- */
-export async function corroborar(formData: FormData) {
-  const { supabase, user } = await usuarioActual();
-
-  const estadisticaId = String(formData.get("estadistica") ?? "");
-  const tipo = String(formData.get("tipo") ?? "");
-  const comentario = String(formData.get("comentario") ?? "").trim();
-
-  if (!estadisticaId) {
-    volver({ error: "No se supo a qué dato te referías." });
-  }
-
-  if (tipo !== "corrobora" && tipo !== "reporta") {
-    volver({ error: "Acción desconocida." });
-  }
-
-  const { error } = await supabase.from("corroboraciones").insert({
-    estadistica_id: estadisticaId,
-    usuario_id: user.id,
-    tipo,
-    comentario: comentario || null,
-  });
-
-  if (error) {
-    const mensaje = error.message.toLowerCase();
-
-    if (mensaje.includes("autocorrobor") || mensaje.includes("propio")) {
-      volver({ error: "No puedes corroborar tu propio aporte." });
-    }
-
-    if (error.code === "23505") {
-      volver({ error: "Ya te habías pronunciado sobre ese dato." });
-    }
-
-    volver({ error: error.message });
-  }
-
-  revalidatePath("/estadisticas");
+  revalidatePath("/penalver");
   revalidatePath("/");
   volver({
     aviso:
-      tipo === "corrobora"
-        ? "Corroborado. Con tres como la tuya, el dato queda verificado."
-        : "Anotado. El dato vuelve a revisión para que lo miren otros.",
+      estado === "verificado"
+        ? "Dato publicado y verificado."
+        : "Dato publicado, marcado en revisión.",
   });
 }
 
-/** Retirar lo que uno dijo sobre un dato. La política DELETE solo deja borrar lo propio. */
-export async function retirarCorroboracion(formData: FormData) {
-  const { supabase, user } = await usuarioActual();
+/**
+ * Cambiar el sello de una cifra: verificada o en revisión.
+ *
+ * Es lo único que se actualiza de una estadística, y solo lo hace un admin.
+ * Sirve para lo que ya está cargado con fuente indirecta —una enciclopedia
+ * citando al INE, por ejemplo— que no se puede presentar como oficial hasta
+ * tener el documento en la mano.
+ */
+export async function cambiarSello(formData: FormData) {
+  const { supabase } = await adminActual();
 
   const estadisticaId = String(formData.get("estadistica") ?? "");
+  const estado = String(formData.get("estado") ?? "");
 
   if (!estadisticaId) {
     volver({ error: "No se supo a qué dato te referías." });
   }
 
+  if (estado !== "verificado" && estado !== "en_revision") {
+    volver({ error: "Ese sello no existe." });
+  }
+
   const { error } = await supabase
-    .from("corroboraciones")
-    .delete()
-    .eq("estadistica_id", estadisticaId)
-    .eq("usuario_id", user.id);
+    .from("estadisticas")
+    .update({ estado })
+    .eq("id", estadisticaId);
 
   if (error) {
     volver({ error: error.message });
   }
 
   revalidatePath("/estadisticas");
+  revalidatePath("/penalver");
   revalidatePath("/");
-  volver({ aviso: "Retirado." });
+  volver({
+    aviso: estado === "verificado" ? "Cifra verificada." : "Cifra devuelta a revisión.",
+  });
 }

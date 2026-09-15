@@ -155,7 +155,7 @@ function Ficha({
 export const metadata = {
   title: "Peñalver",
   description:
-    "Datos del Municipio Fernando de Peñalver: estadísticas con fuente, parroquias y cifras corroboradas por los vecinos.",
+    "Datos del Municipio Fernando de Peñalver: cifras con su fuente, parroquias y la vida del pueblo contada por su gente.",
 };
 
 export default async function Penalver({
@@ -225,13 +225,14 @@ export default async function Penalver({
               <h1 className="font-display text-5xl md:text-6xl leading-[1.05] mt-5">
                 Los datos de tu municipio,
                 <br />
-                verificados por quienes viven en él.
+                con el papel que los respalda.
               </h1>
 
               <p className="text-lg text-mar-200 mt-6 max-w-lg leading-relaxed">
                 Cada cifra lleva su fuente. Ningún número se edita a escondidas:
-                si hay uno mejor, se aporta y los vecinos lo corroboran. Tres
-                voces lo verifican, una sola basta para ponerlo en duda.
+                si hay uno mejor, se agrega y el anterior queda para comparar.
+                Las que tienen el documento delante van marcadas como
+                verificadas; las demás, en revisión.
               </p>
 
               <div className="flex flex-wrap gap-4 mt-9">

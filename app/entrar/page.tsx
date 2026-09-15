@@ -61,7 +61,7 @@ export default async function Entrar({
         <p className="text-tinta-600 mt-4 leading-relaxed">
           {esRegistro
             ? "Con tu correo y tu parroquia basta. Nada de esto se publica."
-            : "Para aportar datos, subir fotos y corroborar lo que suben tus vecinos."}
+            : "Para publicar lo que pasa en el pueblo, subir tus fotos y respaldar lo de tus vecinos."}
         </p>
 
         {error ? (

@@ -2,12 +2,12 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 
-import { aportarEstadistica, corroborar, retirarCorroboracion } from "./acciones";
+import { aportarEstadistica, cambiarSello } from "./acciones";
 
 export const metadata = {
   title: "Estadísticas",
   description:
-    "Cifras del Municipio Fernando de Peñalver con su fuente, corroboradas por los vecinos.",
+    "Cifras del Municipio Fernando de Peñalver, cada una con su fuente, cargadas por el equipo del portal.",
 };
 
 const campo =
@@ -44,83 +44,33 @@ function Sello({ estado }: { estado: string | null }) {
 
   return (
     <span
-      className={`cifra text-[10px] uppercase tracking-[0.14em] border px-3 py-1 ${sello.clase}`}
+      className={`cifra text-[10px] uppercase tracking-[0.14em] border px-3 py-1 whitespace-nowrap ${sello.clase}`}
     >
       {sello.texto}
     </span>
   );
 }
 
-const botonChico =
-  "cifra text-[11px] uppercase tracking-[0.14em] border px-4 py-2 transition-colors";
-
 /**
- * Corroborar o poner en duda. Nadie corrobora su propio aporte — lo impide un
- * trigger en la base, y aquí ni siquiera se ofrece.
+ * Cambiar el sello. Solo lo ve un admin, y solo él puede usarlo: la política
+ * de update en la base no deja a nadie más.
  */
-function Opinar({
-  id,
-  hayUsuario,
-  esMio,
-  yaDije,
-}: {
-  id: string;
-  hayUsuario: boolean;
-  esMio: boolean;
-  yaDije: string | null;
-}) {
-  if (!hayUsuario) return null;
-
-  if (esMio) {
-    return (
-      <p className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 mt-5">
-        Tu aporte
-      </p>
-    );
-  }
-
-  if (yaDije) {
-    return (
-      <form action={retirarCorroboracion} className="mt-5 flex items-center gap-4">
-        <input type="hidden" name="estadistica" value={id} />
-        <span className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
-          {yaDije === "corrobora" ? "Lo corroboraste" : "Lo pusiste en duda"}
-        </span>
-        <button
-          type="submit"
-          className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 hover:text-tinta-900 underline transition-colors"
-        >
-          Retirar
-        </button>
-      </form>
-    );
-  }
+function CambiarSello({ id, estado }: { id: string; estado: string | null }) {
+  const verificado = estado === "verificado";
 
   return (
-    <form action={corroborar} className="mt-5 flex flex-wrap items-center gap-3">
+    <form action={cambiarSello} className="mt-5">
       <input type="hidden" name="estadistica" value={id} />
-      <input
-        name="comentario"
-        type="text"
-        autoComplete="off"
-        placeholder="Comentario (opcional)"
-        className="flex-1 min-w-[12rem] border border-arena-200 bg-white px-3 py-2 text-sm text-tinta-900 placeholder:text-tinta-400 focus:border-mar-500 focus:outline-none"
-      />
+      <input type="hidden" name="estado" value={verificado ? "en_revision" : "verificado"} />
       <button
         type="submit"
-        name="tipo"
-        value="corrobora"
-        className={`${botonChico} border-monte-400/50 text-monte-600 hover:border-monte-600`}
+        className={`cifra text-[11px] uppercase tracking-[0.14em] border px-4 py-2 transition-colors ${
+          verificado
+            ? "border-arena-200 text-tinta-600 hover:border-estrella-500/60 hover:text-estrella-600"
+            : "border-monte-400/50 text-monte-600 hover:border-monte-600"
+        }`}
       >
-        Corroborar
-      </button>
-      <button
-        type="submit"
-        name="tipo"
-        value="reporta"
-        className={`${botonChico} border-arena-200 text-tinta-600 hover:border-estrella-500/60 hover:text-estrella-600`}
-      >
-        Poner en duda
+        {verificado ? "Devolver a revisión" : "Marcar verificada"}
       </button>
     </form>
   );
@@ -133,9 +83,7 @@ type Estadistica = {
   fuente: string | null;
   fecha_dato: string | null;
   estado: string | null;
-  corroboraciones_count: number | null;
   parroquia_id: string | null;
-  creado_por: string | null;
 };
 
 function cuando(fecha: string | null) {
@@ -161,9 +109,7 @@ export default async function Estadisticas({
   const [{ data: datos }, { data: parroquias }, { data: municipios }] = await Promise.all([
     supabase
       .from("estadisticas")
-      .select(
-        "id, tipo, valor, fuente, fecha_dato, estado, corroboraciones_count, parroquia_id, creado_por"
-      )
+      .select("id, tipo, valor, fuente, fecha_dato, estado, parroquia_id")
       .order("creado_en", { ascending: false })
       .limit(100),
     supabase
@@ -174,28 +120,16 @@ export default async function Estadisticas({
     supabase.from("municipios").select("id, nombre").order("nombre"),
   ]);
 
+  const { data: miPerfil } = user
+    ? await supabase.from("perfiles").select("es_admin").eq("id", user.id).maybeSingle()
+    : { data: null };
+
+  const esAdmin = Boolean(miPerfil?.es_admin);
+
   const lista = (datos ?? []) as Estadistica[];
   const nombreParroquia = new Map(
     (parroquias ?? []).map((p) => [p.id as string, p.nombre as string])
   );
-
-  // Lo que este usuario ya dijo, para no ofrecerle pronunciarse dos veces.
-  const mias = new Map<string, string>();
-
-  if (user && lista.length > 0) {
-    const { data: propias } = await supabase
-      .from("corroboraciones")
-      .select("estadistica_id, tipo")
-      .eq("usuario_id", user.id)
-      .in(
-        "estadistica_id",
-        lista.map((d) => d.id)
-      );
-
-    for (const c of propias ?? []) {
-      mias.set(c.estadistica_id as string, c.tipo as string);
-    }
-  }
 
   return (
     <main className="flex-1 bg-arena-50">
@@ -209,10 +143,11 @@ export default async function Estadisticas({
 
         <h1 className="font-display text-4xl mt-6">Estadísticas</h1>
         <p className="text-sm text-tinta-600 mt-3 leading-relaxed max-w-2xl">
-          Cada cifra de aquí la aportó alguien y dice de dónde la sacó. Ninguna
-          se edita: si tienes un número mejor, lo agregas y queda el anterior
-          para comparar. Las que los vecinos corroboran quedan marcadas como
-          verificadas.
+          Las cifras del municipio las carga el equipo del portal, y cada una
+          dice de dónde salió. Ninguna se edita: si aparece un número mejor, se
+          agrega y queda el anterior para comparar. Las que están respaldadas
+          por un documento se marcan como verificadas; las demás quedan en
+          revisión hasta tener el papel en la mano.
         </p>
 
         {error ? (
@@ -237,7 +172,7 @@ export default async function Estadisticas({
         <section className="mt-10 flex flex-col gap-4">
           {lista.length === 0 ? (
             <p className={`${seccion} text-sm text-tinta-600`}>
-              Todavía no hay ningún dato. El primero puede ser tuyo.
+              Todavía no hay ninguna cifra cargada.
             </p>
           ) : (
             lista.map((d) => (
@@ -263,30 +198,22 @@ export default async function Estadisticas({
                       : "todo el municipio"}
                   </span>
                   {cuando(d.fecha_dato) ? <span>dato de {cuando(d.fecha_dato)}</span> : null}
-                  <span>
-                    {d.corroboraciones_count ?? 0}{" "}
-                    {d.corroboraciones_count === 1 ? "corroboración" : "corroboraciones"}
-                  </span>
                 </p>
 
-                <Opinar
-                  id={d.id}
-                  hayUsuario={Boolean(user)}
-                  esMio={Boolean(user && d.creado_por === user.id)}
-                  yaDije={mias.get(d.id) ?? null}
-                />
+                {esAdmin ? <CambiarSello id={d.id} estado={d.estado} /> : null}
               </article>
             ))
           )}
         </section>
 
-        {/* ---------------- Aportar ---------------- */}
-        {user ? (
+        {/* ---------------- Cargar un dato ---------------- */}
+        {esAdmin ? (
           <form action={aportarEstadistica} className={`${seccion} mt-10`}>
-            <h2 className="font-display text-2xl">Aportar un dato</h2>
+            <h2 className="font-display text-2xl">Cargar un dato</h2>
             <p className="text-sm text-tinta-600 mt-2 leading-relaxed">
-              Entra en revisión hasta que otros vecinos lo corroboren. La fuente
-              es obligatoria: un documento, una gaceta, una placa, un informe.
+              La fuente es obligatoria: un documento, una gaceta, una placa, un
+              informe. Si la fuente es indirecta —una enciclopedia citando al
+              INE, por ejemplo— déjalo en revisión.
             </p>
 
             <div className="flex flex-col gap-5 mt-6">
@@ -354,26 +281,43 @@ export default async function Estadisticas({
                 />
               </div>
 
-              <div>
-                <label className={etiqueta} htmlFor="fecha">
-                  Fecha del dato <span className="normal-case">(opcional)</span>
-                </label>
-                <input id="fecha" name="fecha" type="date" className={`${campo} cifra`} />
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div>
+                  <label className={etiqueta} htmlFor="estado">
+                    Sello
+                  </label>
+                  <select id="estado" name="estado" required className={campo} defaultValue="en_revision">
+                    <option value="en_revision">En revisión — fuente indirecta</option>
+                    <option value="verificado">Verificado — tengo el documento</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={etiqueta} htmlFor="fecha">
+                    Fecha del dato <span className="normal-case">(opcional)</span>
+                  </label>
+                  <input id="fecha" name="fecha" type="date" className={`${campo} cifra`} />
+                </div>
               </div>
             </div>
 
             <button className={`${boton} mt-6`} type="submit">
-              Publicar aporte
+              Publicar dato
             </button>
           </form>
         ) : (
-          <p className={`${seccion} mt-10 text-sm text-tinta-600`}>
-            Para aportar un dato hace falta tener cuenta.{" "}
-            <Link href="/entrar" className="text-mar-700 underline">
-              Entra o regístrate
-            </Link>
-            , es gratis y solo pide un correo.
-          </p>
+          <div className={`${seccion} mt-10`}>
+            <h2 className="font-display text-2xl">¿Y si quiero aportar yo?</h2>
+            <p className="text-sm text-tinta-600 mt-2 leading-relaxed">
+              Estas cifras las carga el equipo del portal, con el documento
+              delante, para que nadie pueda dañarlas. Lo del día a día del
+              pueblo sí es tuyo:{" "}
+              <Link href="/" className="text-mar-700 underline">
+                publica en el feed
+              </Link>{" "}
+              una noticia, una reseña o una foto, y respalda las de los demás.
+            </p>
+          </div>
         )}
       </div>
     </main>
