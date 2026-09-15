@@ -26,6 +26,10 @@ const fechaCorta = new Intl.DateTimeFormat("es-VE", {
 });
 
 /**
+ * El sello es control interno: solo lo ve un admin. Al vecino no le dice nada
+ * útil que una cifra esté "en revisión" — para él la credencial es la fuente,
+ * que sí está siempre a la vista.
+ *
  * Los nombres de los estados los define un enum en la base. Aquí solo se
  * traducen a algo legible; si aparece uno que no conocemos, se muestra tal
  * cual en vez de inventarle una etiqueta.
@@ -184,7 +188,7 @@ export default async function Estadisticas({
                     </h2>
                     <p className="cifra text-3xl mt-2">{d.valor ?? "—"}</p>
                   </div>
-                  <Sello estado={d.estado} />
+                  {esAdmin ? <Sello estado={d.estado} /> : null}
                 </div>
 
                 <p className="text-sm text-tinta-600 mt-4 leading-relaxed">

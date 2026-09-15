@@ -121,19 +121,18 @@ function Ficha({
   estado: EstadoDato;
   fuente?: string;
 }) {
-  const sello = {
-    "sin-datos": { texto: "Sin datos", clase: "text-tinta-400 border-arena-200" },
-    revision: { texto: "En revisión", clase: "text-estrella-600 border-estrella-500/40" },
-    verificado: { texto: "Verificado", clase: "text-monte-600 border-monte-400/50" },
-  }[estado];
-
+  /*
+   * El único sello que ve la gente es el hueco: "sin datos" dice algo
+   * honesto y útil. Que una cifra esté verificada o en revisión es control
+   * interno del equipo y vive en /estadisticas, donde solo lo ve un admin.
+   */
   return (
     <article className="reveal border border-arena-200 bg-white/60 p-7 flex flex-col gap-4">
-      <span
-        className={`cifra self-start text-[11px] uppercase tracking-[0.14em] border px-2 py-1 ${sello.clase}`}
-      >
-        {sello.texto}
-      </span>
+      {estado === "sin-datos" ? (
+        <span className="cifra self-start text-[11px] uppercase tracking-[0.14em] border border-arena-200 px-2 py-1 text-tinta-400">
+          Sin datos
+        </span>
+      ) : null}
 
       <p className="cifra text-4xl text-tinta-900 leading-none">
         {valor ?? "—"}
@@ -272,17 +271,18 @@ export default async function Penalver({
                 Nada se presenta como oficial sin una fuente detrás.
               </h2>
               <p className="text-tinta-600 mt-5 leading-relaxed">
-                Cada ficha se llena con aportes de los vecinos, y cada aporte
-                dice de dónde salió. Las que todavía están vacías lo están a
-                propósito: preferimos un hueco a un número inventado. El sello
-                de verificado llega cuando tres personas distintas lo confirman.
+                Cada ficha dice de dónde salió su número, y las que están
+                vacías lo están a propósito: preferimos un hueco a un dato
+                inventado. Las cifras las carga el equipo del portal con el
+                documento delante; lo del día a día del pueblo lo publica la
+                gente en el feed.
               </p>
 
               <Link
                 href="/estadisticas"
                 className="cifra inline-block mt-7 text-xs uppercase tracking-[0.14em] border border-arena-200 text-tinta-600 hover:text-tinta-900 hover:border-tinta-400 px-6 py-3 transition-colors"
               >
-                Ver todas y aportar
+                Ver todas las cifras
               </Link>
             </div>
 
