@@ -100,9 +100,14 @@ function cuando(fecha: string | null) {
 export default async function Estadisticas({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; aviso?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    aviso?: string;
+    parroquia?: string;
+    tipo?: string;
+  }>;
 }) {
-  const { error, aviso } = await searchParams;
+  const { error, aviso, parroquia, tipo } = await searchParams;
 
   const supabase = await createClient();
 
@@ -110,19 +115,44 @@ export default async function Estadisticas({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: datos }, { data: parroquias }, { data: municipios }] = await Promise.all([
-    supabase
-      .from("estadisticas")
-      .select("id, tipo, valor, fuente, fecha_dato, estado, parroquia_id")
-      .order("creado_en", { ascending: false })
-      .limit(100),
-    supabase
-      .from("parroquias")
-      .select("id, nombre, es_capital")
-      .order("es_capital", { ascending: false })
-      .order("nombre", { ascending: true }),
-    supabase.from("municipios").select("id, nombre").order("nombre"),
-  ]);
+  let consulta = supabase
+    .from("estadisticas")
+    .select("id, tipo, valor, fuente, fecha_dato, estado, parroquia_id")
+    .order("creado_en", { ascending: false })
+    .limit(100);
+
+  if (parroquia === "municipio") consulta = consulta.is("parroquia_id", null);
+  else if (parroquia) consulta = consulta.eq("parroquia_id", parroquia);
+  if (tipo) consulta = consulta.eq("tipo", tipo);
+
+  const [{ data: datos }, { data: parroquias }, { data: municipios }, { data: todosLosTipos }] =
+    await Promise.all([
+      consulta,
+      supabase
+        .from("parroquias")
+        .select("id, nombre, es_capital")
+        .order("es_capital", { ascending: false })
+        .order("nombre", { ascending: true }),
+      supabase.from("municipios").select("id, nombre").order("nombre"),
+      // Los temas no son una lista fija: son lo que se haya cargado. El filtro
+      // se arma con lo que existe, así que nace vacío y crece solo.
+      supabase.from("estadisticas").select("tipo").limit(500),
+    ]);
+
+  const temas = [
+    ...new Set(
+      ((todosLosTipos ?? []) as { tipo: string | null }[])
+        .map((t) => t.tipo?.trim())
+        .filter((t): t is string => Boolean(t))
+    ),
+  ].sort((a, b) => a.localeCompare(b, "es"));
+
+  function enlace(cambios: Record<string, string | undefined>) {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries({ parroquia, tipo, ...cambios })) if (v) p.set(k, v);
+    const q = p.toString();
+    return q ? `/estadisticas?${q}` : "/estadisticas";
+  }
 
   const { data: miPerfil } = user
     ? await supabase.from("perfiles").select("es_admin").eq("id", user.id).maybeSingle()
@@ -137,7 +167,7 @@ export default async function Estadisticas({
 
   return (
     <main className="flex-1 bg-arena-50">
-      <div className="mx-auto max-w-3xl px-6 py-16 md:py-20">
+      <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
         <Link
           href="/"
           className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 hover:text-tinta-900 transition-colors"
@@ -172,157 +202,240 @@ export default async function Estadisticas({
           </p>
         ) : null}
 
-        {/* ---------------- Listado ---------------- */}
-        <section className="mt-10 flex flex-col gap-4">
-          {lista.length === 0 ? (
-            <p className={`${seccion} text-sm text-tinta-600`}>
-              Todavía no hay ninguna cifra cargada.
-            </p>
-          ) : (
-            lista.map((d) => (
-              <article key={d.id} className={seccion}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-600">
-                      {d.tipo ?? "sin nombre"}
-                    </h2>
-                    <p className="cifra text-3xl mt-2">{d.valor ?? "—"}</p>
-                  </div>
-                  {esAdmin ? <Sello estado={d.estado} /> : null}
+        {/*
+          * Panel a la izquierda: los filtros y, para el admin, la caja de
+          * cargar. El centro se queda para lo que la gente viene a ver.
+          * En teléfono el panel se va arriba, que ocupa cuatro líneas.
+          */}
+        <div className="mt-10 grid gap-10 lg:grid-cols-[14rem_1fr] lg:items-start">
+          <aside className="flex flex-col gap-7 lg:sticky lg:top-24">
+            <div>
+              <p className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
+                Parroquia
+              </p>
+              <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm lg:flex-col lg:gap-2">
+                <li>
+                  <Link
+                    href={enlace({ parroquia: undefined })}
+                    className={parroquia ? "text-tinta-600 hover:text-tinta-900" : "text-tinta-900"}
+                  >
+                    Todas
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={enlace({ parroquia: "municipio" })}
+                    className={
+                      parroquia === "municipio"
+                        ? "text-tinta-900"
+                        : "text-tinta-600 hover:text-tinta-900"
+                    }
+                  >
+                    Todo el municipio
+                  </Link>
+                </li>
+                {(parroquias ?? []).map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={enlace({ parroquia: p.id as string })}
+                      className={
+                        parroquia === p.id
+                          ? "text-tinta-900"
+                          : "text-tinta-600 hover:text-tinta-900"
+                      }
+                    >
+                      {p.nombre}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {temas.length > 0 ? (
+              <div>
+                <p className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
+                  Tema
+                </p>
+                <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm lg:flex-col lg:gap-2">
+                  <li>
+                    <Link
+                      href={enlace({ tipo: undefined })}
+                      className={tipo ? "text-tinta-600 hover:text-tinta-900" : "text-tinta-900"}
+                    >
+                      Todos
+                    </Link>
+                  </li>
+                  {temas.map((t) => (
+                    <li key={t}>
+                      <Link
+                        href={enlace({ tipo: t })}
+                        className={
+                          tipo === t ? "text-tinta-900" : "text-tinta-600 hover:text-tinta-900"
+                        }
+                      >
+                        {t}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </aside>
+
+          <div>
+          {/* ---------------- Cargar un dato ---------------- */}
+          {esAdmin ? (
+            <form action={aportarEstadistica} className={`${seccion} mt-10`}>
+              <h2 className="font-display text-2xl">Cargar un dato</h2>
+              <p className="text-sm text-tinta-600 mt-2 leading-relaxed">
+                La fuente es obligatoria: un documento, una gaceta, una placa, un
+                informe. Si la fuente es indirecta —una enciclopedia citando al
+                INE, por ejemplo— déjalo en revisión.
+              </p>
+
+              <div className="flex flex-col gap-5 mt-6">
+                <div>
+                  <label className={etiqueta} htmlFor="tipo">
+                    Qué mide
+                  </label>
+                  <input
+                    id="tipo"
+                    name="tipo"
+                    type="text"
+                    required
+                    autoComplete="off"
+                    placeholder="Población, escuelas públicas, kilómetros de costa…"
+                    className={campo}
+                  />
                 </div>
 
-                <p className="text-sm text-tinta-600 mt-4 leading-relaxed">
-                  {d.fuente ?? "sin fuente"}
-                </p>
-
-                <p className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 mt-3 flex flex-wrap gap-x-4 gap-y-1">
-                  <span>
-                    {d.parroquia_id
-                      ? (nombreParroquia.get(d.parroquia_id) ?? "parroquia")
-                      : "todo el municipio"}
-                  </span>
-                  {cuando(d.fecha_dato) ? <span>dato de {cuando(d.fecha_dato)}</span> : null}
-                </p>
-
-                {esAdmin ? <CambiarSello id={d.id} estado={d.estado} /> : null}
-              </article>
-            ))
-          )}
-        </section>
-
-        {/* ---------------- Cargar un dato ---------------- */}
-        {esAdmin ? (
-          <form action={aportarEstadistica} className={`${seccion} mt-10`}>
-            <h2 className="font-display text-2xl">Cargar un dato</h2>
-            <p className="text-sm text-tinta-600 mt-2 leading-relaxed">
-              La fuente es obligatoria: un documento, una gaceta, una placa, un
-              informe. Si la fuente es indirecta —una enciclopedia citando al
-              INE, por ejemplo— déjalo en revisión.
-            </p>
-
-            <div className="flex flex-col gap-5 mt-6">
-              <div>
-                <label className={etiqueta} htmlFor="tipo">
-                  Qué mide
-                </label>
-                <input
-                  id="tipo"
-                  name="tipo"
-                  type="text"
-                  required
-                  autoComplete="off"
-                  placeholder="Población, escuelas públicas, kilómetros de costa…"
-                  className={campo}
-                />
-              </div>
-
-              <div>
-                <label className={etiqueta} htmlFor="valor">
-                  El dato
-                </label>
-                <input
-                  id="valor"
-                  name="valor"
-                  type="text"
-                  required
-                  autoComplete="off"
-                  placeholder="36.000 hab."
-                  className={`${campo} cifra`}
-                />
-              </div>
-
-              <div>
-                <label className={etiqueta} htmlFor="ambito">
-                  A qué corresponde
-                </label>
-                <select id="ambito" name="ambito" required className={campo}>
-                  <option value="">Elige…</option>
-                  {(municipios ?? []).map((m) => (
-                    <option key={m.id} value={`municipio:${m.id}`}>
-                      Todo el municipio {m.nombre}
-                    </option>
-                  ))}
-                  {(parroquias ?? []).map((p) => (
-                    <option key={p.id} value={`parroquia:${p.id}`}>
-                      Parroquia {p.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={etiqueta} htmlFor="fuente">
-                  Fuente
-                </label>
-                <input
-                  id="fuente"
-                  name="fuente"
-                  type="text"
-                  required
-                  autoComplete="off"
-                  placeholder="Censo INE 2011 · Gaceta Municipal N.º 12 · Memoria y Cuenta 2025"
-                  className={campo}
-                />
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-5">
                 <div>
-                  <label className={etiqueta} htmlFor="estado">
-                    Sello
+                  <label className={etiqueta} htmlFor="valor">
+                    El dato
                   </label>
-                  <select id="estado" name="estado" required className={campo} defaultValue="en_revision">
-                    <option value="en_revision">En revisión — fuente indirecta</option>
-                    <option value="verificado">Verificado — tengo el documento</option>
+                  <input
+                    id="valor"
+                    name="valor"
+                    type="text"
+                    required
+                    autoComplete="off"
+                    placeholder="36.000 hab."
+                    className={`${campo} cifra`}
+                  />
+                </div>
+
+                <div>
+                  <label className={etiqueta} htmlFor="ambito">
+                    A qué corresponde
+                  </label>
+                  <select id="ambito" name="ambito" required className={campo}>
+                    <option value="">Elige…</option>
+                    {(municipios ?? []).map((m) => (
+                      <option key={m.id} value={`municipio:${m.id}`}>
+                        Todo el municipio {m.nombre}
+                      </option>
+                    ))}
+                    {(parroquias ?? []).map((p) => (
+                      <option key={p.id} value={`parroquia:${p.id}`}>
+                        Parroquia {p.nombre}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className={etiqueta} htmlFor="fecha">
-                    Fecha del dato <span className="normal-case">(opcional)</span>
+                  <label className={etiqueta} htmlFor="fuente">
+                    Fuente
                   </label>
-                  <input id="fecha" name="fecha" type="date" className={`${campo} cifra`} />
+                  <input
+                    id="fuente"
+                    name="fuente"
+                    type="text"
+                    required
+                    autoComplete="off"
+                    placeholder="Censo INE 2011 · Gaceta Municipal N.º 12 · Memoria y Cuenta 2025"
+                    className={campo}
+                  />
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className={etiqueta} htmlFor="estado">
+                      Sello
+                    </label>
+                    <select id="estado" name="estado" required className={campo} defaultValue="en_revision">
+                      <option value="en_revision">En revisión — fuente indirecta</option>
+                      <option value="verificado">Verificado — tengo el documento</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={etiqueta} htmlFor="fecha">
+                      Fecha del dato <span className="normal-case">(opcional)</span>
+                    </label>
+                    <input id="fecha" name="fecha" type="date" className={`${campo} cifra`} />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <button className={`${boton} mt-6`} type="submit">
-              Publicar dato
-            </button>
-          </form>
-        ) : (
-          <div className={`${seccion} mt-10`}>
-            <h2 className="font-display text-2xl">¿Y si quiero aportar yo?</h2>
-            <p className="text-sm text-tinta-600 mt-2 leading-relaxed">
-              Estas cifras las carga el equipo del portal, con el documento
-              delante, para que nadie pueda dañarlas. Lo del día a día del
-              pueblo sí es tuyo:{" "}
-              <Link href="/" className="text-mar-700 underline">
-                publica en el feed
-              </Link>{" "}
-              una noticia, una reseña o una foto, y respalda las de los demás.
-            </p>
+              <button className={`${boton} mt-6`} type="submit">
+                Publicar dato
+              </button>
+            </form>
+          ) : (
+            <div className={`${seccion} mt-10`}>
+              <h2 className="font-display text-2xl">¿Y si quiero aportar yo?</h2>
+              <p className="text-sm text-tinta-600 mt-2 leading-relaxed">
+                Estas cifras las carga el equipo del portal, con el documento
+                delante, para que nadie pueda dañarlas. Lo del día a día del
+                pueblo sí es tuyo:{" "}
+                <Link href="/" className="text-mar-700 underline">
+                  publica en el feed
+                </Link>{" "}
+                una noticia, una reseña o una foto, y respalda las de los demás.
+              </p>
+            </div>
+          )}
+
+          {/* ---------------- Listado ---------------- */}
+          <section className="flex flex-col gap-4">
+            {lista.length === 0 ? (
+              <p className={`${seccion} text-sm text-tinta-600`}>
+                Todavía no hay ninguna cifra cargada.
+              </p>
+            ) : (
+              lista.map((d) => (
+                <article key={d.id} className={seccion}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-600">
+                        {d.tipo ?? "sin nombre"}
+                      </h2>
+                      <p className="cifra text-3xl mt-2">{d.valor ?? "—"}</p>
+                    </div>
+                    {esAdmin ? <Sello estado={d.estado} /> : null}
+                  </div>
+
+                  <p className="text-sm text-tinta-600 mt-4 leading-relaxed">
+                    {d.fuente ?? "sin fuente"}
+                  </p>
+
+                  <p className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                    <span>
+                      {d.parroquia_id
+                        ? (nombreParroquia.get(d.parroquia_id) ?? "parroquia")
+                        : "todo el municipio"}
+                    </span>
+                    {cuando(d.fecha_dato) ? <span>dato de {cuando(d.fecha_dato)}</span> : null}
+                  </p>
+
+                  {esAdmin ? <CambiarSello id={d.id} estado={d.estado} /> : null}
+                </article>
+              ))
+            )}
+          </section>
           </div>
-        )}
+        </div>
       </div>
     </main>
   );
