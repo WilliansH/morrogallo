@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { tomarSesion } from "@/lib/sesion-unica";
 import { createClient } from "@/lib/supabase/server";
 
 /** Origen real de la petición: sirve igual en localhost:3210 y en Vercel. */
@@ -41,6 +42,10 @@ export async function iniciarSesion(formData: FormData) {
       modo: "entrar",
     });
   }
+
+  // Esta pasa a ser la sesión buena: cualquier otra abierta se cierra sola
+  // en su próximo request.
+  await tomarSesion(supabase);
 
   redirect("/");
 }

@@ -3,471 +3,515 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 
-import { cerrarSesion } from "./entrar/acciones";
+import { ocultar, publicar, votar } from "./acciones-feed";
+import ComprimirImagen from "./comprimir-imagen";
+import Footer from "./footer";
+import Nav from "./nav";
 import Ticker from "./ticker";
 
-export const revalidate = 300;
-
-type Parroquia = {
-  id: string;
-  nombre: string;
-  es_capital: boolean | null;
+export const metadata = {
+  title: "Morrogallo — lo que pasa en el municipio",
+  description:
+    "Noticias, reseñas y fotos de la gente del Municipio Fernando de Peñalver, parroquia por parroquia.",
 };
 
-/* ------------------------------------------------------------------ */
-/* Ilustración del hero: sol, tres olas, cerro y tres estrellas.        */
-/* SVG inline — se ve sin JavaScript y no pesa un request extra.        */
-/* ------------------------------------------------------------------ */
-function Ilustracion() {
-  return (
-    <svg
-      viewBox="0 0 480 360"
-      role="img"
-      aria-label="Sol sobre el mar, el cerro del morrocoy y tres estrellas"
-      className="w-full h-auto"
-    >
-      <defs>
-        <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1a5580" />
-          <stop offset="100%" stopColor="#0e3556" />
-        </linearGradient>
-      </defs>
+const POR_PAGINA = 20;
 
-      <rect width="480" height="360" fill="url(#cielo)" />
+const campo =
+  "w-full border border-arena-200 bg-white px-4 py-3 text-tinta-900 placeholder:text-tinta-400 focus:border-mar-500 focus:outline-none";
+const etiqueta =
+  "cifra block text-[11px] uppercase tracking-[0.14em] text-tinta-600 mb-2";
+const boton =
+  "cifra text-xs uppercase tracking-[0.14em] bg-estrella-500 hover:bg-estrella-600 text-arena-50 px-6 py-3 transition-colors";
+const tarjeta = "border border-arena-200 bg-white/60 p-6";
 
-      {/* Sol */}
-      <circle cx="330" cy="112" r="46" fill="#E7D2A1" />
-      <circle cx="330" cy="112" r="70" fill="#E7D2A1" opacity="0.14" />
+const NOMBRE_TIPO: Record<string, string> = {
+  noticia: "Noticia",
+  resena: "Reseña",
+  foto: "Foto",
+};
 
-      {/* Tres estrellas */}
-      <g fill="#FBF4E4">
-        <path d="M104 62l4.2 8.9 9.8 1.3-7.2 6.8 1.8 9.7-8.6-4.7-8.6 4.7 1.8-9.7-7.2-6.8 9.8-1.3z" />
-        <path d="M150 44l3.4 7.1 7.8 1-5.7 5.4 1.4 7.7-6.9-3.7-6.9 3.7 1.4-7.7-5.7-5.4 7.8-1z" />
-        <path d="M62 100l3.4 7.1 7.8 1-5.7 5.4 1.4 7.7-6.9-3.7-6.9 3.7 1.4-7.7-5.7-5.4 7.8-1z" />
-      </g>
+const cuando = new Intl.DateTimeFormat("es-VE", {
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "America/Caracas",
+});
 
-      {/* Cerro rojo — el morro */}
-      <path d="M0 250 L96 150 L170 214 L232 176 L316 250 Z" fill="#A02E22" />
-      <path d="M96 150 L134 190 L58 190 Z" fill="#C23B2E" />
+type Publicacion = {
+  id: string;
+  usuario_id: string | null;
+  parroquia_id: string | null;
+  tipo: string | null;
+  titulo: string | null;
+  descripcion: string | null;
+  imagen_url: string | null;
+  imagen_mini_url: string | null;
+  votos_count: number | null;
+  creado_en: string | null;
+};
 
-      {/* Tres olas */}
-      <path
-        d="M0 250h480v110H0z"
-        fill="#2F7FAE"
-        opacity="0.35"
-      />
-      <path
-        d="M0 262c60 0 60 18 120 18s60-18 120-18 60 18 120 18 60-18 120-18v98H0z"
-        fill="#2F7FAE"
-        opacity="0.55"
-      />
-      <path
-        d="M0 292c60 0 60 18 120 18s60-18 120-18 60 18 120 18 60-18 120-18v68H0z"
-        fill="#1A5580"
-      />
-      <path
-        d="M0 322c60 0 60 18 120 18s60-18 120-18 60 18 120 18 60-18 120-18v38H0z"
-        fill="#0E3556"
-      />
-    </svg>
-  );
+function fecha(iso: string | null) {
+  if (!iso) return null;
+  const f = new Date(iso);
+  return Number.isNaN(f.getTime()) ? null : cuando.format(f);
 }
 
-/* ------------------------------------------------------------------ */
-/* Ficha de estadística. Tres estados posibles, ninguno inventado.      */
-/* ------------------------------------------------------------------ */
-type EstadoDato = "sin-datos" | "revision" | "verificado";
-
-function Ficha({
-  etiqueta,
-  valor,
-  unidad,
-  estado,
-  fuente,
-}: {
-  etiqueta: string;
-  valor?: string;
-  unidad?: string;
-  estado: EstadoDato;
-  fuente?: string;
-}) {
-  const sello = {
-    "sin-datos": { texto: "Sin datos", clase: "text-tinta-400 border-arena-200" },
-    revision: { texto: "En revisión", clase: "text-estrella-600 border-estrella-500/40" },
-    verificado: { texto: "Verificado", clase: "text-monte-600 border-monte-400/50" },
-  }[estado];
-
-  return (
-    <article className="reveal border border-arena-200 bg-white/60 p-7 flex flex-col gap-4">
-      <span
-        className={`cifra self-start text-[11px] uppercase tracking-[0.14em] border px-2 py-1 ${sello.clase}`}
-      >
-        {sello.texto}
-      </span>
-
-      <p className="cifra text-4xl text-tinta-900 leading-none">
-        {valor ?? "—"}
-        {unidad ? (
-          <span className="text-base text-tinta-400 ml-2">{unidad}</span>
-        ) : null}
-      </p>
-
-      <div>
-        <h3 className="font-display text-lg text-tinta-900">{etiqueta}</h3>
-        <p className="text-sm text-tinta-600 mt-1">
-          {fuente ?? "Nadie ha aportado este dato todavía."}
-        </p>
-      </div>
-    </article>
-  );
-}
-
-export default async function Home({
+export default async function Feed({
   searchParams,
 }: {
-  searchParams: Promise<{ bienvenida?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    aviso?: string;
+    orden?: string;
+    parroquia?: string;
+    pagina?: string;
+    bienvenida?: string;
+  }>;
 }) {
-  const { bienvenida } = await searchParams;
+  const { error, aviso, orden, parroquia, pagina, bienvenida } = await searchParams;
+
+  const porVotos = orden === "votados";
+  const nPagina = Math.max(1, Number(pagina) || 1);
+  const desde = (nPagina - 1) * POR_PAGINA;
+
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: perfil } = user
-    ? await supabase
-        .from("perfiles")
-        .select("nombre_visible, foto_url")
-        .eq("id", user.id)
-        .maybeSingle()
-    : { data: null };
-
-  // El correo es el respaldo: alguien recién registrado puede no tener nombre.
-  const comoSeLlama =
-    perfil?.nombre_visible?.trim() || user?.email?.split("@")[0] || "Mi perfil";
-
-  const { data: parroquias, error } = await supabase
+  const { data: parroquias } = await supabase
     .from("parroquias")
     .select("id, nombre, es_capital")
     .order("es_capital", { ascending: false })
     .order("nombre", { ascending: true });
 
-  const lista = (parroquias ?? []) as Parroquia[];
+  let consulta = supabase
+    .from("publicaciones")
+    .select(
+      "id, usuario_id, parroquia_id, tipo, titulo, descripcion, imagen_url, imagen_mini_url, votos_count, creado_en"
+    )
+    // oculto puede venir en null en filas viejas: null tampoco es "oculto".
+    .not("oculto", "is", true)
+    .range(desde, desde + POR_PAGINA);
+
+  if (parroquia) consulta = consulta.eq("parroquia_id", parroquia);
+
+  consulta = porVotos
+    ? consulta.order("votos_count", { ascending: false }).order("creado_en", { ascending: false })
+    : consulta.order("creado_en", { ascending: false });
+
+  const { data: filas } = await consulta;
+
+  const todas = (filas ?? []) as Publicacion[];
+  const hayMas = todas.length > POR_PAGINA;
+  const lista = todas.slice(0, POR_PAGINA);
+
+  const nombreParroquia = new Map(
+    (parroquias ?? []).map((p) => [p.id as string, p.nombre as string])
+  );
+
+  // Nombres de quienes publicaron. La vista perfiles_publicos solo expone lo
+  // que es público; si todavía no existe, el feed se muestra igual sin nombres.
+  const autores = new Map<string, { nombre: string | null; foto: string | null }>();
+  const idsAutores = [...new Set(lista.map((p) => p.usuario_id).filter(Boolean))] as string[];
+
+  if (idsAutores.length > 0) {
+    const { data: perfiles } = await supabase
+      .from("perfiles_publicos")
+      .select("id, nombre_visible, foto_url")
+      .in("id", idsAutores);
+
+    for (const p of perfiles ?? []) {
+      autores.set(p.id as string, {
+        nombre: (p.nombre_visible as string) ?? null,
+        foto: (p.foto_url as string) ?? null,
+      });
+    }
+  }
+
+  // Qué votó ya esta persona.
+  const misVotos = new Set<string>();
+
+  if (user && lista.length > 0) {
+    const { data: votos } = await supabase
+      .from("votos")
+      .select("publicacion_id")
+      .eq("usuario_id", user.id)
+      .in(
+        "publicacion_id",
+        lista.map((p) => p.id)
+      );
+
+    for (const v of votos ?? []) misVotos.add(v.publicacion_id as string);
+  }
+
+  const { data: miPerfil } = user
+    ? await supabase
+        .from("perfiles")
+        .select("es_admin, nombre_visible, foto_url")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  const esAdmin = Boolean(miPerfil?.es_admin);
+  const miNombre = (miPerfil?.nombre_visible as string | null)?.trim().split(" ")[0] ?? "";
+
+  function enlace(cambios: Record<string, string | undefined>) {
+    const p = new URLSearchParams();
+    const base = { orden, parroquia, ...cambios };
+    for (const [k, v] of Object.entries(base)) if (v) p.set(k, v);
+    const q = p.toString();
+    return q ? `/?${q}` : "/";
+  }
 
   return (
     <>
-      {/* ---------------- Ticker ---------------- */}
       <Ticker />
+      <Nav />
 
-      {/* ---------------- Nav ---------------- */}
-      <header className="sticky top-0 z-50 bg-arena-50/90 backdrop-blur border-b border-arena-200">
-        <nav className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="font-display text-xl tracking-tight text-tinta-900">
-            Morrogallo
-          </Link>
-
-          <ul className="hidden md:flex items-center gap-8 text-sm text-tinta-600">
-            <li>
-              <a className="hover:text-tinta-900 transition-colors" href="#estadisticas">
-                Estadísticas
-              </a>
-            </li>
-            <li>
-              <a className="hover:text-tinta-900 transition-colors" href="#penalver">
-                Peñalver
-              </a>
-            </li>
-            <li>
-              <a className="hover:text-tinta-900 transition-colors" href="#comunidad">
-                Comunidad
-              </a>
-            </li>
-          </ul>
-
-          {user ? (
-            <div className="flex items-center gap-4">
-              <Link
-                href="/perfil"
-                className="flex items-center gap-3 group"
-                title={user.email ?? ""}
-              >
-                {perfil?.foto_url ? (
-                  <Image
-                    src={perfil.foto_url}
-                    alt=""
-                    width={28}
-                    height={28}
-                    className="w-7 h-7 object-cover border border-arena-200"
-                  />
-                ) : null}
-                <span className="text-sm text-tinta-600 group-hover:text-tinta-900 max-w-[16ch] truncate transition-colors">
-                  {comoSeLlama}
-                </span>
-              </Link>
-              <form action={cerrarSesion}>
-                <button
-                  type="submit"
-                  className="cifra text-xs uppercase tracking-[0.14em] border border-arena-200 text-tinta-600 hover:text-tinta-900 hover:border-tinta-400 px-4 py-2 transition-colors"
-                >
-                  Salir
-                </button>
-              </form>
-            </div>
-          ) : (
-            <Link
-              href="/entrar"
-              className="cifra text-xs uppercase tracking-[0.14em] bg-estrella-500 hover:bg-estrella-600 text-arena-50 px-4 py-2 transition-colors"
-            >
-              Entrar
-            </Link>
-          )}
-        </nav>
-      </header>
-
-      <main className="flex-1">
-        {bienvenida ? (
-          <p
-            role="status"
-            className="mx-auto max-w-6xl px-6 pt-6 cifra text-sm text-monte-600"
-          >
-            Cuenta confirmada. Bienvenido a Morrogallo.
-          </p>
-        ) : null}
-
-        {/* ---------------- Hero ---------------- */}
-        <section className="bg-mar-900 text-arena-50">
-          <div className="mx-auto max-w-6xl px-6 py-20 md:py-28 grid md:grid-cols-2 gap-14 items-center">
-            <div className="reveal">
+      <main className="flex-1 bg-arena-50">
+        {/* Quien llega sin cuenta necesita entender dónde cayó. */}
+        {user ? null : (
+          <section className="bg-mar-900 text-arena-50">
+            <div className="mx-auto max-w-3xl px-6 py-12">
               <p className="cifra text-xs uppercase tracking-[0.2em] text-mar-200">
-                Estado Anzoátegui
-              </p>
-
-              <h1 className="font-display text-5xl md:text-6xl leading-[1.05] mt-5">
-                Los datos de tu municipio,
-                <br />
-                verificados por quienes viven en él.
-              </h1>
-
-              <p className="text-lg text-mar-200 mt-6 max-w-lg leading-relaxed">
-                Cada cifra lleva su fuente. Ningún número se edita a escondidas:
-                si hay uno mejor, se aporta y los vecinos lo corroboran. Tres
-                voces lo verifican, una sola basta para ponerlo en duda.
-              </p>
-
-              <div className="flex flex-wrap gap-4 mt-9">
-                <a
-                  href="#penalver"
-                  className="cifra text-xs uppercase tracking-[0.14em] bg-arena-50 text-mar-900 px-6 py-3 hover:bg-arena-100 transition-colors"
-                >
-                  Ver Peñalver
-                </a>
-                <a
-                  href="#comunidad"
-                  className="cifra text-xs uppercase tracking-[0.14em] border border-mar-500 text-mar-200 px-6 py-3 hover:border-arena-50 hover:text-arena-50 transition-colors"
-                >
-                  Cómo participar
-                </a>
-              </div>
-            </div>
-
-            <div className="reveal">
-              <Ilustracion />
-              <p className="text-xs text-mar-200/70 mt-4 text-center">
-                El morrocoy volador de la leyenda anzoatiguense, en el escudo del
-                municipio.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ---------------- Estadísticas ---------------- */}
-        <section id="estadisticas" className="bg-arena-50">
-          <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-            <div className="reveal max-w-2xl">
-              <p className="cifra text-xs uppercase tracking-[0.2em] text-tinta-400">
-                Estadísticas colaborativas
-              </p>
-              <h2 className="font-display text-4xl mt-4 leading-tight">
-                Nada se presenta como oficial sin una fuente detrás.
-              </h2>
-              <p className="text-tinta-600 mt-5 leading-relaxed">
-                Estas fichas están vacías a propósito. Se llenan con aportes de
-                los vecinos, cada uno con su fuente, y solo llevan el sello de
-                verificado cuando tres personas distintas lo confirman.
-              </p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
-              <Ficha
-                etiqueta="Superficie del municipio"
-                valor="643"
-                unidad="km²"
-                estado="revision"
-                fuente="Estimación sin fuente confirmada. Pendiente de corroboración."
-              />
-              <Ficha
-                etiqueta="Población de Peñalver"
-                valor="~36.000"
-                unidad="hab."
-                estado="revision"
-                fuente="Estimación sin fuente confirmada. Pendiente de corroboración."
-              />
-              <Ficha etiqueta="Centros de votación" estado="sin-datos" />
-              <Ficha etiqueta="Electores inscritos" estado="sin-datos" />
-              <Ficha etiqueta="Escuelas públicas" estado="sin-datos" />
-              <Ficha etiqueta="Ambulatorios y centros de salud" estado="sin-datos" />
-            </div>
-          </div>
-        </section>
-
-        {/* ---------------- Peñalver ---------------- */}
-        <section id="penalver" className="bg-monte-800 text-arena-50">
-          <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-            <div className="reveal max-w-2xl">
-              <p className="cifra text-xs uppercase tracking-[0.2em] text-monte-400">
                 Municipio Fernando de Peñalver
               </p>
-              <h2 className="font-display text-4xl mt-4 leading-tight">
-                Puerto Píritu y sus parroquias.
-              </h2>
-              <p className="text-arena-100/80 mt-5 leading-relaxed">
-                Morrogallo arranca aquí, pero está hecho para cualquiera de los
-                21 municipios de Anzoátegui.
+              <h1 className="font-display text-4xl md:text-5xl leading-tight mt-4">
+                Lo que pasa en el pueblo, contado por el pueblo.
+              </h1>
+              <p className="text-mar-200 mt-4 leading-relaxed">
+                Noticias del barrio, reseñas de dónde comer, fotos de la calle y
+                del puerto. Te registras con tu correo, eliges tu parroquia y
+                publicas. Lo que los vecinos respaldan, sube.
               </p>
-            </div>
-
-            {error ? (
-              <p className="reveal cifra text-sm text-arena-200 border border-monte-600 p-6 mt-12">
-                No se pudieron cargar las parroquias en este momento.
-              </p>
-            ) : (
-              <ul className="grid sm:grid-cols-3 gap-6 mt-12">
-                {lista.map((p) => (
-                  <li
-                    key={p.id}
-                    className="reveal border border-monte-600 p-7 hover:border-monte-400 transition-colors"
-                  >
-                    {p.es_capital ? (
-                      <span className="cifra text-[11px] uppercase tracking-[0.14em] text-monte-400">
-                        Capital
-                      </span>
-                    ) : (
-                      <span className="cifra text-[11px] uppercase tracking-[0.14em] text-arena-100/40">
-                        Parroquia
-                      </span>
-                    )}
-                    <h3 className="font-display text-2xl mt-3">{p.nombre}</h3>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
-
-        {/* ---------------- Comunidad ---------------- */}
-        <section id="comunidad" className="bg-arena-100">
-          <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-            <div className="reveal max-w-2xl">
-              <p className="cifra text-xs uppercase tracking-[0.2em] text-tinta-400">
-                Red comunitaria
-              </p>
-              <h2 className="font-display text-4xl mt-4 leading-tight">
-                Lo que pasa en la parroquia lo cuenta la parroquia.
-              </h2>
-            </div>
-
-            <ol className="grid md:grid-cols-3 gap-10 mt-12">
-              {[
-                {
-                  n: "01",
-                  t: "Te registras con tu correo",
-                  d: "Eliges tu municipio y tu parroquia. Nada más hace falta.",
-                },
-                {
-                  n: "02",
-                  t: "Subes fotos y noticias",
-                  d: "Lo que ves en la calle, el puerto, la plaza o la escuela.",
-                },
-                {
-                  n: "03",
-                  t: "Los vecinos lo validan",
-                  d: "Un voto por persona. Lo que la comunidad respalda, sube.",
-                },
-              ].map((paso) => (
-                <li key={paso.n} className="reveal">
-                  <span className="cifra text-xs text-estrella-500 tracking-[0.2em]">
-                    {paso.n}
-                  </span>
-                  <h3 className="font-display text-2xl mt-3">{paso.t}</h3>
-                  <p className="text-tinta-600 mt-2 leading-relaxed">{paso.d}</p>
-                </li>
-              ))}
-            </ol>
-
-            {user ? null : (
-              <div className="reveal mt-14">
+              <div className="flex flex-wrap gap-4 mt-7">
                 <Link
                   href="/entrar?modo=registro"
-                  className="cifra text-xs uppercase tracking-[0.14em] bg-estrella-500 hover:bg-estrella-600 text-arena-50 px-6 py-3 inline-block transition-colors"
+                  className="cifra text-xs uppercase tracking-[0.14em] bg-arena-50 text-mar-900 px-6 py-3 hover:bg-arena-100 transition-colors"
                 >
                   Crear mi cuenta
                 </Link>
+                <Link
+                  href="/penalver"
+                  className="cifra text-xs uppercase tracking-[0.14em] border border-mar-500 text-mar-200 px-6 py-3 hover:border-arena-50 hover:text-arena-50 transition-colors"
+                >
+                  Datos del municipio
+                </Link>
               </div>
-            )}
+            </div>
+          </section>
+        )}
+
+        <div className="mx-auto max-w-3xl px-6 py-10">
+          {bienvenida ? (
+            <p role="status" className="cifra text-sm text-monte-600 mb-6">
+              Cuenta confirmada. Bienvenido a Morrogallo.
+            </p>
+          ) : null}
+
+          {error ? (
+            <p
+              role="alert"
+              className="mb-6 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          {aviso ? (
+            <p
+              role="status"
+              className="mb-6 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
+            >
+              {aviso}
+            </p>
+          ) : null}
+
+          {/* ---------------- Publicar ---------------- */}
+          {user ? (
+            /*
+             * Plegado por defecto para no comerse la pantalla: el feed es lo
+             * que la gente viene a ver. <details> lo abre y lo cierra sin una
+             * línea de JavaScript, y si el envío falló se queda abierto para
+             * que nadie pierda lo que escribió.
+             */
+            <details open={Boolean(error)} className="border border-arena-200 bg-white/60 mb-8">
+              <summary className="flex items-center gap-3 p-4">
+                {miPerfil?.foto_url ? (
+                  <Image
+                    src={miPerfil.foto_url as string}
+                    alt=""
+                    width={36}
+                    height={36}
+                    unoptimized
+                    className="w-9 h-9 object-cover border border-arena-200 shrink-0"
+                  />
+                ) : (
+                  <span className="w-9 h-9 border border-arena-200 bg-arena-100 shrink-0" />
+                )}
+
+                <span className="flex-1 border border-arena-200 bg-arena-50 px-4 py-2.5 text-sm text-tinta-400">
+                  {miNombre
+                    ? `¿Qué está pasando, ${miNombre}?`
+                    : "¿Qué está pasando en el pueblo?"}
+                </span>
+              </summary>
+
+              <form action={publicar} className="px-4 pb-5">
+              <div className="flex flex-col gap-5 mt-1">
+                <div className="grid sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className={etiqueta} htmlFor="tipo">
+                      Qué es
+                    </label>
+                    <select id="tipo" name="tipo" required className={campo}>
+                      <option value="noticia">Noticia</option>
+                      <option value="resena">Reseña</option>
+                      <option value="foto">Foto</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={etiqueta} htmlFor="parroquia">
+                      Parroquia
+                    </label>
+                    <select id="parroquia" name="parroquia" required className={campo}>
+                      {(parroquias ?? []).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={etiqueta} htmlFor="titulo">
+                    Título
+                  </label>
+                  <input
+                    id="titulo"
+                    name="titulo"
+                    type="text"
+                    required
+                    autoComplete="off"
+                    placeholder="Arreglaron el alumbrado de la plaza · Almuerzo en el malecón"
+                    className={campo}
+                  />
+                </div>
+
+                <div>
+                  <label className={etiqueta} htmlFor="descripcion">
+                    Cuéntalo <span className="normal-case">(opcional)</span>
+                  </label>
+                  <textarea
+                    id="descripcion"
+                    name="descripcion"
+                    rows={3}
+                    className={campo}
+                    placeholder="Lo que viste, cómo estuvo, qué recomiendas."
+                  />
+                </div>
+
+                <div>
+                  <label className={etiqueta} htmlFor="foto">
+                    Foto <span className="normal-case">(opcional)</span>
+                  </label>
+                  <ComprimirImagen className="block w-full text-sm text-tinta-600 file:cifra file:mr-4 file:border file:border-arena-200 file:bg-arena-100 file:px-4 file:py-2 file:text-xs file:uppercase file:tracking-[0.14em] file:text-tinta-600" />
+                </div>
+              </div>
+
+              <button className={`${boton} mt-6`} type="submit">
+                Publicar
+              </button>
+              </form>
+            </details>
+          ) : null}
+
+          {/* ---------------- Filtros ---------------- */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 mb-6">
+            <Link
+              href={enlace({ orden: undefined, pagina: undefined })}
+              className={porVotos ? "hover:text-tinta-900" : "text-tinta-900"}
+            >
+              Recientes
+            </Link>
+            <Link
+              href={enlace({ orden: "votados", pagina: undefined })}
+              className={porVotos ? "text-tinta-900" : "hover:text-tinta-900"}
+            >
+              Más respaldadas
+            </Link>
+
+            <span className="ml-auto flex flex-wrap gap-x-4 gap-y-2">
+              <Link
+                href={enlace({ parroquia: undefined, pagina: undefined })}
+                className={parroquia ? "hover:text-tinta-900" : "text-tinta-900"}
+              >
+                Todas
+              </Link>
+              {(parroquias ?? []).map((p) => (
+                <Link
+                  key={p.id}
+                  href={enlace({ parroquia: p.id as string, pagina: undefined })}
+                  className={parroquia === p.id ? "text-tinta-900" : "hover:text-tinta-900"}
+                >
+                  {p.nombre}
+                </Link>
+              ))}
+            </span>
           </div>
-        </section>
+
+          {/* ---------------- Feed ---------------- */}
+          <section className="flex flex-col gap-4">
+            {lista.length === 0 ? (
+              <p className={`${tarjeta} text-sm text-tinta-600`}>
+                Todavía no hay nada publicado por aquí. Si viste algo hoy en el
+                pueblo, cuéntalo tú.
+              </p>
+            ) : (
+              lista.map((p) => {
+                const autor = p.usuario_id ? autores.get(p.usuario_id) : null;
+                const yaVote = misVotos.has(p.id);
+
+                return (
+                  <article key={p.id} className={tarjeta}>
+                    <header className="flex items-center gap-3">
+                      {autor?.foto ? (
+                        <Image
+                          src={autor.foto}
+                          alt=""
+                          width={32}
+                          height={32}
+                          unoptimized
+                          className="w-8 h-8 object-cover border border-arena-200"
+                        />
+                      ) : (
+                        <span className="w-8 h-8 border border-arena-200 bg-arena-100" />
+                      )}
+
+                      <div className="min-w-0">
+                        <p className="text-sm text-tinta-900 truncate">
+                          {autor?.nombre?.trim() || "Un vecino"}
+                        </p>
+                        <p className="cifra text-[10px] uppercase tracking-[0.14em] text-tinta-400">
+                          {NOMBRE_TIPO[p.tipo ?? ""] ?? p.tipo}
+                          {p.parroquia_id && nombreParroquia.get(p.parroquia_id)
+                            ? ` · ${nombreParroquia.get(p.parroquia_id)}`
+                            : ""}
+                          {fecha(p.creado_en) ? ` · ${fecha(p.creado_en)}` : ""}
+                        </p>
+                      </div>
+                    </header>
+
+                    <h2 className="font-display text-xl mt-4">{p.titulo}</h2>
+
+                    {p.descripcion ? (
+                      <p className="text-sm text-tinta-600 mt-2 leading-relaxed whitespace-pre-line">
+                        {p.descripcion}
+                      </p>
+                    ) : null}
+
+                    {p.imagen_mini_url || p.imagen_url ? (
+                      <a
+                        href={p.imagen_url ?? p.imagen_mini_url ?? "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block mt-4"
+                      >
+                        {/* El feed carga la miniatura; la grande solo si la abren. */}
+                        {/*
+                          * Tope de altura: una foto vertical de celular medía
+                          * 1.200px de alto en pantalla y se comía el feed
+                          * entero. object-contain para no recortarle nada a
+                          * nadie: se ve completa, dentro del tope.
+                          */}
+                        <Image
+                          src={(p.imagen_mini_url ?? p.imagen_url) as string}
+                          alt={p.titulo ?? ""}
+                          width={400}
+                          height={400}
+                          unoptimized
+                          className="w-full h-auto max-h-[28rem] object-contain bg-arena-100 border border-arena-200"
+                        />
+                      </a>
+                    ) : null}
+
+                    <div className="flex items-center gap-4 mt-5">
+                      {user ? (
+                        <form action={votar}>
+                          <input type="hidden" name="publicacion" value={p.id} />
+                          {yaVote ? <input type="hidden" name="quitar" value="1" /> : null}
+                          <button
+                            type="submit"
+                            className={`cifra text-[11px] uppercase tracking-[0.14em] border px-4 py-2 transition-colors ${
+                              yaVote
+                                ? "border-monte-400/50 text-monte-600"
+                                : "border-arena-200 text-tinta-600 hover:border-tinta-400 hover:text-tinta-900"
+                            }`}
+                          >
+                            {yaVote ? "Respaldada" : "Respaldar"} · {p.votos_count ?? 0}
+                          </button>
+                        </form>
+                      ) : (
+                        <span className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
+                          {p.votos_count ?? 0}{" "}
+                          {p.votos_count === 1 ? "respaldo" : "respaldos"}
+                        </span>
+                      )}
+
+                      {esAdmin ? (
+                        <form action={ocultar}>
+                          <input type="hidden" name="publicacion" value={p.id} />
+                          <button
+                            type="submit"
+                            className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 hover:text-estrella-600 underline transition-colors"
+                          >
+                            Ocultar
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })
+            )}
+          </section>
+
+          {/* ---------------- Páginas ---------------- */}
+          {nPagina > 1 || hayMas ? (
+            <nav className="flex justify-between mt-8 cifra text-[11px] uppercase tracking-[0.14em]">
+              {nPagina > 1 ? (
+                <Link
+                  href={enlace({ pagina: String(nPagina - 1) })}
+                  className="text-tinta-600 hover:text-tinta-900"
+                >
+                  ← Más nuevas
+                </Link>
+              ) : (
+                <span />
+              )}
+
+              {hayMas ? (
+                <Link
+                  href={enlace({ pagina: String(nPagina + 1) })}
+                  className="text-tinta-600 hover:text-tinta-900"
+                >
+                  Más viejas →
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
+          ) : null}
+        </div>
       </main>
 
-      {/* ---------------- Footer ---------------- */}
-      <footer className="bg-tinta-900 text-arena-100">
-        <div className="mx-auto max-w-6xl px-6 py-14 grid sm:grid-cols-3 gap-10">
-          <div>
-            <p className="font-display text-xl">Morrogallo</p>
-            <p className="text-sm text-tinta-400 mt-2 leading-relaxed">
-              Portal comunitario del estado Anzoátegui.
-            </p>
-          </div>
-
-          <div>
-            <p className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
-              Secciones
-            </p>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <a className="hover:text-arena-50 transition-colors" href="#estadisticas">
-                  Estadísticas
-                </a>
-              </li>
-              <li>
-                <a className="hover:text-arena-50 transition-colors" href="#penalver">
-                  Peñalver
-                </a>
-              </li>
-              <li>
-                <a className="hover:text-arena-50 transition-colors" href="#comunidad">
-                  Comunidad
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <p className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
-              Redes
-            </p>
-            <p className="text-sm text-tinta-400 mt-3">
-              Enlaces de la Alcaldía y la comunidad, pendientes.
-            </p>
-          </div>
-        </div>
-
-        <div className="border-t border-tinta-600/40">
-          <p className="mx-auto max-w-6xl px-6 py-5 cifra text-[11px] text-tinta-400">
-            Hecho en Puerto Píritu. Los colores son una aproximación a la bandera
-            del municipio, pendiente de confirmación con la Alcaldía.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </>
   );
 }

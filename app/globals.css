@@ -127,3 +127,17 @@ html.js .reveal.visible {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
+
+/* ------------------------------------------------------------
+   <details> como caja plegable: nativo del navegador, así que
+   abre y cierra sin una línea de JavaScript. Solo le quitamos
+   el triangulito por defecto.
+   ------------------------------------------------------------ */
+summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}

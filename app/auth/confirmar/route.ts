@@ -2,6 +2,7 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { type NextRequest } from "next/server";
 
+import { tomarSesion } from "@/lib/sesion-unica";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -18,6 +19,8 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
 
     if (!error) {
+      // Confirmar la cuenta abre sesión: esta pasa a ser la buena.
+      await tomarSesion(supabase);
       redirect("/?bienvenida=1");
     }
   }
