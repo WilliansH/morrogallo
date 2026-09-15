@@ -109,7 +109,10 @@ update public.perfiles
 
 create or replace view public.perfiles_publicos
   with (security_invoker = off) as
-  select id, nombre_visible, foto_url, foto_mini_url, parroquia_id, municipio_id
+  -- foto_mini_url va al final a propósito: create or replace view solo deja
+  -- agregar columnas después de las que ya había. Meterla en el medio es
+  -- renombrar las siguientes, y Postgres lo rechaza.
+  select id, nombre_visible, foto_url, parroquia_id, municipio_id, foto_mini_url
   from public.perfiles;
 
 grant select on public.perfiles_publicos to anon, authenticated;
