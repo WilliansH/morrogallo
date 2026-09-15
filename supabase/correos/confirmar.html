@@ -1,0 +1,78 @@
+<!--
+  Correo de confirmación de cuenta.
+  Se pega en Supabase → Authentication → Emails → Confirm sign up.
+
+  Reglas de correo, que no son las de la web: todo en tablas, todos los
+  estilos en línea, nada de fuentes cargadas ni SVG —Gmail los tumba—. El
+  dibujo va como PNG servido por el propio sitio. Y tiene que leerse bien
+  aunque el cliente bloquee las imágenes, que es lo normal la primera vez:
+  por eso el color y el texto cargan solos con el mensaje.
+
+  Variable de Supabase: {{ .ConfirmationURL }}
+-->
+<!doctype html>
+<html lang="es">
+  <body style="margin:0;padding:0;background:#f3e5c6;">
+    <div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#f3e5c6;">
+      Confirma tu correo y entra a Morrogallo.
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3e5c6;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#fbf4e4;border:1px solid #e7d2a1;">
+
+            <tr>
+              <td align="center" style="background:#0e3556;padding:30px 24px 22px;">
+                <img src="https://morrogallo.vercel.app/morrogallo-correo.png" width="200" height="143" alt="Morrogallo" style="display:block;border:0;width:200px;max-width:60%;height:auto;" />
+                <p style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.1;color:#fbf4e4;">Morrogallo</p>
+                <p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#7fa8c6;">Municipio Fernando de Pe&ntilde;alver</p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:34px 32px 0;font-family:Arial,Helvetica,sans-serif;color:#182620;">
+                <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:1.25;">Ya casi est&aacute;s dentro.</p>
+                <p style="margin:16px 0 0;font-size:15px;line-height:1.65;color:#48594f;">
+                  Alguien cre&oacute; una cuenta en Morrogallo con este correo. Conf&iacute;rmalo y ya puedes
+                  publicar lo que pasa en el pueblo, rese&ntilde;ar d&oacute;nde se come bien y respaldar
+                  lo que suban tus vecinos.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding:30px 32px 0;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" bgcolor="#c23b2e" style="background:#c23b2e;">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:16px 34px;font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#fbf4e4;text-decoration:none;">Confirmar mi correo</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:22px 32px 30px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.7;color:#77897e;">
+                <p style="margin:0;">Si el bot&oacute;n no abre, copia esta direcci&oacute;n en tu navegador:</p>
+                <p style="margin:6px 0 0;word-break:break-all;">
+                  <a href="{{ .ConfirmationURL }}" style="color:#1a5580;">{{ .ConfirmationURL }}</a>
+                </p>
+                <p style="margin:20px 0 0;">Si no fuiste t&uacute;, no hagas nada: sin confirmar, la cuenta no se crea.</p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="background:#182620;padding:20px 32px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.7;color:#77897e;">
+                <p style="margin:0;color:#f3e5c6;">Morrogallo &middot; Portal comunitario del estado Anzo&aacute;tegui</p>
+                <p style="margin:4px 0 0;">Hecho en Puerto P&iacute;ritu. Sitio desarrollado por BiAse IT Solutions C.A.</p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
