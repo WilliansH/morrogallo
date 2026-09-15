@@ -141,3 +141,151 @@ summary {
 summary::-webkit-details-marker {
   display: none;
 }
+
+/* ------------------------------------------------------------
+   MORROGALLO — la mascota
+   El dibujo vive en app/morrogallo.tsx; los colores viven aquí.
+   Cada pieza pinta con una variable --m-*, así que la piel se
+   cambia con una clase y nadie toca el SVG:
+
+     .morro           a color, sobre fondo claro
+     .morro-contra    crema y oro sobre mar-900 (la principal)
+     .morro-tinta     una sola tinta, hereda el color del texto
+
+   La animación es CSS pura: se mueve también en el visor de
+   WhatsApp, que no corre JavaScript.
+   ------------------------------------------------------------ */
+
+:root {
+  /* Oro del plumaje. No está en la bandera: es solo de la mascota. */
+  --gallo-400: #e0a33c;
+  --gallo-500: #c98e2f;
+  --gallo-600: #a9701f;
+  --gallo-800: #7d520f;
+}
+
+.morro {
+  display: block;
+
+  --m-papel: var(--arena-50);
+  --m-shell: var(--mar-700);
+  --m-scute: var(--mar-500);
+  --m-line: var(--mar-200);
+  --m-rim: var(--mar-900);
+  --m-leg: var(--monte-600);
+  --m-leg-dark: var(--monte-800);
+  --m-plume: var(--gallo-400);
+  --m-plume-dark: var(--gallo-600);
+  --m-crest: var(--estrella-500);
+  --m-eye: var(--arena-50);
+  --m-pupil: var(--tinta-900);
+  --m-t1: var(--monte-800);
+  --m-t2: var(--monte-600);
+  --m-t3: var(--gallo-400);
+  --m-t4: var(--estrella-500);
+  --m-shadow: rgb(14 53 86 / 0.13);
+  --m-seal-bg: var(--mar-900);
+  --m-seal-ring: var(--gallo-400);
+}
+
+.morro-contra {
+  --m-papel: var(--mar-900);
+  --m-shell: var(--arena-50);
+  --m-scute: var(--arena-200);
+  --m-line: var(--mar-500);
+  --m-rim: var(--gallo-500);
+  --m-leg: var(--gallo-500);
+  --m-leg-dark: var(--gallo-600);
+  --m-plume: var(--gallo-400);
+  --m-plume-dark: var(--gallo-800);
+  --m-crest: var(--estrella-500);
+  --m-eye: var(--mar-900);
+  --m-pupil: var(--arena-50);
+  --m-t1: var(--gallo-400);
+  --m-t2: var(--arena-50);
+  --m-t3: var(--estrella-500);
+  --m-t4: var(--gallo-500);
+  --m-shadow: rgb(0 0 0 / 0.25);
+  --m-seal-bg: var(--mar-900);
+  --m-seal-ring: var(--gallo-400);
+}
+
+.morro-tinta {
+  --m-shell: currentColor;
+  --m-scute: currentColor;
+  --m-line: var(--m-papel);
+  --m-rim: currentColor;
+  --m-leg: currentColor;
+  --m-leg-dark: currentColor;
+  --m-plume: currentColor;
+  --m-plume-dark: var(--m-papel);
+  --m-crest: currentColor;
+  --m-eye: var(--m-papel);
+  --m-pupil: currentColor;
+  --m-t1: currentColor;
+  --m-t2: var(--m-papel);
+  --m-t3: currentColor;
+  --m-t4: var(--m-papel);
+  --m-shadow: transparent;
+  --m-seal-bg: var(--m-papel);
+  --m-seal-ring: currentColor;
+}
+
+/* Pintura */
+.morro .p-shell { fill: var(--m-shell); }
+.morro .p-rim { fill: var(--m-rim); }
+.morro .p-scute { fill: var(--m-scute); stroke: var(--m-line); stroke-width: 3.5; stroke-linejoin: round; }
+.morro .p-line { fill: none; stroke: var(--m-shell); stroke-width: 4; stroke-linecap: round; }
+.morro .p-leg { fill: var(--m-leg); }
+.morro .p-leg-dark { fill: var(--m-leg-dark); }
+.morro .p-plume { fill: var(--m-plume); }
+.morro .p-plume-dark { fill: var(--m-plume-dark); }
+.morro .p-hackle { fill: none; stroke: var(--m-plume-dark); stroke-width: 3.5; stroke-linecap: round; }
+.morro .p-crest { fill: var(--m-crest); }
+.morro .p-eye { fill: var(--m-eye); }
+.morro .p-pupil { fill: var(--m-pupil); }
+.morro .p-mouth { fill: none; stroke: var(--m-rim); stroke-width: 2.5; stroke-linecap: round; opacity: 0.45; }
+.morro .p-t1 { fill: var(--m-t1); }
+.morro .p-t2 { fill: var(--m-t2); }
+.morro .p-t3 { fill: var(--m-t3); }
+.morro .p-t4 { fill: var(--m-t4); }
+.morro .p-shaft { fill: none; stroke: var(--m-rim); stroke-width: 2; stroke-linecap: round; opacity: 0.35; }
+.morro .p-shadow { fill: var(--m-shadow); }
+.morro .p-seal-bg { fill: var(--m-seal-bg); }
+.morro .p-seal-ring { fill: none; stroke: var(--m-seal-ring); }
+
+/* Movimiento: respira, mueve la cola, picotea, parpadea. */
+.morro .morro-cuerpo,
+.morro .morro-cola,
+.morro .morro-cuello,
+.morro .morro-cresta,
+.morro .morro-ojo,
+.morro .p-shadow {
+  transform-box: view-box;
+}
+
+.morro .morro-cuerpo { transform-origin: 214px 200px; animation: morro-flota 3.6s var(--ease-morro) infinite; }
+.morro .morro-cola { transform-origin: 300px 190px; animation: morro-cola 3.6s ease-in-out infinite; }
+.morro .morro-cuello { transform-origin: 152px 200px; animation: morro-picotea 5.2s ease-in-out infinite; }
+.morro .morro-cresta { transform-origin: 128px 82px; animation: morro-cresta 5.2s ease-in-out infinite; }
+.morro .morro-ojo { transform-origin: 118px 88px; animation: morro-parpadea 5.9s ease-in-out infinite; }
+.morro .p-shadow { transform-origin: 214px 268px; animation: morro-sombra 3.6s ease-in-out infinite; }
+
+@keyframes morro-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes morro-cola { 0%, 100% { transform: rotate(0deg); } 35% { transform: rotate(-5.5deg); } 70% { transform: rotate(3deg); } }
+@keyframes morro-picotea { 0%, 62%, 100% { transform: rotate(0deg) translateY(0); } 70% { transform: rotate(9deg) translateY(4px); } 78% { transform: rotate(-3deg); } 86% { transform: rotate(0deg); } }
+@keyframes morro-cresta { 0%, 60%, 100% { transform: rotate(0deg); } 70% { transform: rotate(-6deg); } 80% { transform: rotate(3deg); } 90% { transform: rotate(0deg); } }
+@keyframes morro-parpadea { 0%, 90%, 100% { transform: scaleY(1); } 93% { transform: scaleY(0.08); } 96% { transform: scaleY(1); } }
+@keyframes morro-sombra { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(0.93); opacity: 0.75; } }
+
+/* Quieto: el dibujo es el mismo, solo deja de moverse. */
+@media (prefers-reduced-motion: reduce) {
+  .morro * {
+    animation: none !important;
+  }
+}
+
+/* El sello nunca se anima: a 32px el movimiento solo ensucia. */
+.morro-quieto * {
+  animation: none !important;
+}

@@ -1,11 +1,14 @@
 import Link from "next/link";
 
+import Morrogallo from "./morrogallo";
+
 /** Pie compartido por todas las páginas. */
 export default function Footer() {
   return (
   <footer className="bg-tinta-900 text-arena-100">
     <div className="mx-auto max-w-6xl px-6 py-14 grid sm:grid-cols-3 gap-10">
       <div>
+        <Morrogallo piel="contra" className="w-44 mb-4" />
         <p className="font-display text-xl">Morrogallo</p>
         <p className="text-sm text-tinta-400 mt-2 leading-relaxed">
           Portal comunitario del estado Anzoátegui.

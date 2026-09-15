@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 import { cerrarSesion } from "./entrar/acciones";
+import Morrogallo from "./morrogallo";
 
 /**
  * Barra superior, compartida por todas las páginas. Se trae la sesión ella
@@ -29,7 +30,11 @@ export default async function Nav() {
   return (
   <header className="sticky top-0 z-50 bg-arena-50/90 backdrop-blur border-b border-arena-200">
     <nav className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-      <Link href="/" className="font-display text-xl tracking-tight text-tinta-900">
+      <Link
+        href="/"
+        className="flex items-center gap-2 font-display text-xl tracking-tight text-tinta-900"
+      >
+        <Morrogallo className="h-11 w-auto shrink-0" />
         Morrogallo
       </Link>
 

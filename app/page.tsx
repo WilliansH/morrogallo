@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ocultar, publicar, votar } from "./acciones-feed";
 import ComprimirImagen from "./comprimir-imagen";
 import Footer from "./footer";
+import Morrogallo from "./morrogallo";
 import Nav from "./nav";
 import Ticker from "./ticker";
 
@@ -176,32 +177,41 @@ export default async function Feed({
         {/* Quien llega sin cuenta necesita entender dónde cayó. */}
         {user ? null : (
           <section className="bg-mar-900 text-arena-50">
-            <div className="mx-auto max-w-3xl px-6 py-12">
-              <p className="cifra text-xs uppercase tracking-[0.2em] text-mar-200">
-                Municipio Fernando de Peñalver
-              </p>
-              <h1 className="font-display text-4xl md:text-5xl leading-tight mt-4">
-                Lo que pasa en el pueblo, contado por el pueblo.
-              </h1>
-              <p className="text-mar-200 mt-4 leading-relaxed">
-                Noticias del barrio, reseñas de dónde comer, fotos de la calle y
-                del puerto. Te registras con tu correo, eliges tu parroquia y
-                publicas. Lo que los vecinos respaldan, sube.
-              </p>
-              <div className="flex flex-wrap gap-4 mt-7">
-                <Link
-                  href="/entrar?modo=registro"
-                  className="cifra text-xs uppercase tracking-[0.14em] bg-arena-50 text-mar-900 px-6 py-3 hover:bg-arena-100 transition-colors"
-                >
-                  Crear mi cuenta
-                </Link>
-                <Link
-                  href="/penalver"
-                  className="cifra text-xs uppercase tracking-[0.14em] border border-mar-500 text-mar-200 px-6 py-3 hover:border-arena-50 hover:text-arena-50 transition-colors"
-                >
-                  Datos del municipio
-                </Link>
+            <div className="mx-auto max-w-3xl px-6 py-12 grid gap-10 md:grid-cols-[1fr_14rem] md:items-center">
+              <div>
+                <p className="cifra text-xs uppercase tracking-[0.2em] text-mar-200">
+                  Municipio Fernando de Peñalver
+                </p>
+                <h1 className="font-display text-4xl md:text-5xl leading-tight mt-4">
+                  Lo que pasa en el pueblo, contado por el pueblo.
+                </h1>
+                <p className="text-mar-200 mt-4 leading-relaxed">
+                  Noticias del barrio, reseñas de dónde comer, fotos de la calle y
+                  del puerto. Te registras con tu correo, eliges tu parroquia y
+                  publicas. Lo que los vecinos respaldan, sube.
+                </p>
+                <div className="flex flex-wrap gap-4 mt-7">
+                  <Link
+                    href="/entrar?modo=registro"
+                    className="cifra text-xs uppercase tracking-[0.14em] bg-arena-50 text-mar-900 px-6 py-3 hover:bg-arena-100 transition-colors"
+                  >
+                    Crear mi cuenta
+                  </Link>
+                  <Link
+                    href="/penalver"
+                    className="cifra text-xs uppercase tracking-[0.14em] border border-mar-500 text-mar-200 px-6 py-3 hover:border-arena-50 hover:text-arena-50 transition-colors"
+                  >
+                    Datos del municipio
+                  </Link>
+                </div>
               </div>
+
+              {/* La mascota: el morrocoy volador que ya está en el escudo. */}
+              <Morrogallo
+                piel="contra"
+                alt="El Morrogallo: morrocoy con cabeza y cola de gallo"
+                className="w-48 md:w-full justify-self-center"
+              />
             </div>
           </section>
         )}
