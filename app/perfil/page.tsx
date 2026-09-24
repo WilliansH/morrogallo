@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-import { cambiarClave, guardarDatos, subirFoto } from "./acciones";
+import { borrarCuenta, cambiarClave, guardarDatos, subirFoto } from "./acciones";
 import ComprimirFoto from "./comprimir-foto";
 
 import Footer from "../footer";
@@ -67,6 +67,13 @@ export default async function Perfil({
 
         <h1 className="font-display text-4xl mt-6">Mi perfil</h1>
         <p className="cifra text-sm text-tinta-400 mt-2">{user.email}</p>
+
+        <Link
+          href={`/vecino/${user.id}`}
+          className="cifra inline-block mt-4 mr-3 text-[11px] uppercase tracking-[0.14em] border border-arena-200 text-tinta-600 hover:text-tinta-900 hover:border-tinta-400 px-4 py-2 transition-colors"
+        >
+          Ver mi perfil público
+        </Link>
 
         {perfil?.es_admin ? (
           <Link
@@ -248,6 +255,44 @@ export default async function Perfil({
             </button>
           </div>
         </form>
+
+        {/* ---------------- Borrar la cuenta ---------------- */}
+        {/*
+          * Plegado para que nadie llegue aquí por accidente, y con la palabra
+          * BORRAR escrita a mano como confirmación: funciona sin JavaScript.
+          */}
+        <details className="border border-estrella-500/40 bg-white/60 mt-6">
+          <summary className="p-7 cursor-pointer">
+            <span className={`${titulo} text-estrella-600`}>Borrar mi cuenta</span>
+          </summary>
+
+          <form action={borrarCuenta} className="px-7 pb-7">
+            <p className="text-sm text-tinta-600 leading-relaxed">
+              Se borra todo de la base de datos y no se puede deshacer: tu
+              nombre, tu correo, tu teléfono, tu dirección, tu foto de perfil,
+              todas tus publicaciones con sus fotos y los respaldos que diste.
+              Si después quieres volver, te registras de nuevo desde cero.
+            </p>
+
+            <label className={`${etiqueta} mt-6`} htmlFor="confirmacion">
+              Escribe BORRAR para confirmar
+            </label>
+            <input
+              className={campo}
+              id="confirmacion"
+              name="confirmacion"
+              type="text"
+              autoComplete="off"
+              required
+              pattern="[Bb][Oo][Rr][Rr][Aa][Rr]"
+              placeholder="BORRAR"
+            />
+
+            <button className={`${boton} mt-5`} type="submit">
+              Borrar mi cuenta para siempre
+            </button>
+          </form>
+        </details>
       </div>
     </main>
 

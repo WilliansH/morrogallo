@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { rutaDe } from "@/lib/fotos";
 import { createClient } from "@/lib/supabase/server";
 
 const MAX_FOTO = 5 * 1024 * 1024; // 5 MB antes de comprimir
@@ -49,14 +50,6 @@ export async function guardarDatos(formData: FormData) {
   revalidatePath("/perfil");
   revalidatePath("/");
   volver({ aviso: "Datos guardados." });
-}
-
-/** De la URL pública saca la ruta dentro del bucket, para poder borrarla. */
-function rutaDe(url: string | null | undefined) {
-  if (!url) return null;
-  const marca = "/object/public/fotos/";
-  const i = url.indexOf(marca);
-  return i === -1 ? null : decodeURIComponent(url.slice(i + marca.length));
 }
 
 /**
@@ -174,4 +167,73 @@ export async function cambiarClave(formData: FormData) {
   }
 
   volver({ aviso: "Contraseña cambiada." });
+}
+
+/**
+ * Borrar la cuenta y todo lo que la persona subió.
+ *
+ * El orden importa:
+ *   1. Las fotos del storage, con la sesión de la persona. Supabase no deja
+ *      borrarlas desde SQL, y si se borra primero el usuario ya no hay sesión
+ *      con qué borrarlas: se quedarían ocupando el storage para siempre.
+ *   2. borrar_mi_cuenta() en la base: publicaciones, respaldos, perfil
+ *      (nombre, correo, teléfono, dirección) y el usuario. Todo o nada.
+ *   3. Se limpian las cookies de esta sesión.
+ */
+export async function borrarCuenta(formData: FormData) {
+  const { supabase, user } = await usuarioActual();
+
+  const confirmacion = String(formData.get("confirmacion") ?? "").trim().toUpperCase();
+
+  if (confirmacion !== "BORRAR") {
+    volver({ error: "Para borrar la cuenta escribe BORRAR en la casilla, en mayúsculas." });
+    return;
+  }
+
+  // 1. Todas sus fotos: las de las publicaciones y las de perfil. Todas viven
+  //    en la carpeta que lleva su id. list() trae de a 100; se repite hasta
+  //    vaciarla.
+  const carpeta = user.id;
+
+  for (let vuelta = 0; vuelta < 50; vuelta++) {
+    const { data: archivos, error } = await supabase.storage
+      .from("fotos")
+      .list(carpeta, { limit: 100 });
+
+    if (error) {
+      volver({ error: "No se pudieron borrar tus fotos. No se borró nada; prueba de nuevo." });
+      return;
+    }
+
+    if (!archivos || archivos.length === 0) break;
+
+    const { data: borrados, error: errorBorrar } = await supabase.storage
+      .from("fotos")
+      .remove(archivos.map((a) => `${carpeta}/${a.name}`));
+
+    // Si la política no deja borrar, remove() no da error: devuelve la lista
+    // vacía. Sin esta guarda se borraría la cuenta dejando las fotos.
+    if (errorBorrar || !borrados || borrados.length === 0) {
+      volver({ error: "No se pudieron borrar tus fotos. No se borró nada; prueba de nuevo." });
+      return;
+    }
+  }
+
+  // 2. La base.
+  const { error } = await supabase.rpc("borrar_mi_cuenta");
+
+  if (error) {
+    volver({ error: `Tus fotos se borraron, pero la cuenta no: ${error.message}` });
+    return;
+  }
+
+  // 3. El usuario ya no existe; solo queda sacar las cookies de este navegador.
+  await supabase.auth.signOut({ scope: "local" });
+
+  revalidatePath("/", "layout");
+  redirect(
+    `/?${new URLSearchParams({
+      aviso: "Tu cuenta fue borrada, con tus datos y todo lo que publicaste.",
+    }).toString()}`
+  );
 }

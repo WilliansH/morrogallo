@@ -400,7 +400,12 @@ export default async function Feed({
 
                 return (
                   <article key={p.id} className={tarjeta}>
+                    {/* Tocar el nombre o la foto lleva al perfil público de quien publicó. */}
                     <header className="flex items-center gap-3">
+                      <Link
+                        href={p.usuario_id ? `/vecino/${p.usuario_id}` : "#"}
+                        className="flex items-center gap-3 min-w-0 group"
+                      >
                       {autor?.foto ? (
                         <Image
                           src={autor.foto}
@@ -415,7 +420,7 @@ export default async function Feed({
                       )}
 
                       <div className="min-w-0">
-                        <p className="text-sm text-tinta-900 truncate">
+                        <p className="text-sm text-tinta-900 truncate group-hover:underline">
                           {autor?.nombre?.trim() || "Un vecino"}
                         </p>
                         <p className="cifra text-[10px] uppercase tracking-[0.14em] text-tinta-400">
@@ -426,6 +431,7 @@ export default async function Feed({
                           {fecha(p.creado_en) ? ` · ${fecha(p.creado_en)}` : ""}
                         </p>
                       </div>
+                      </Link>
                     </header>
 
                     <h2 className="font-display text-xl mt-4">{p.titulo}</h2>
