@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 const MAX_FOTO = 5 * 1024 * 1024; // 5 MB antes de comprimir
 
 function volver(params: Record<string, string>) {
-  redirect(`/perfil?${new URLSearchParams(params).toString()}`);
+  redirect(`/perfil/ajustes?${new URLSearchParams(params).toString()}`);
 }
 
 async function usuarioActual() {
@@ -47,7 +47,8 @@ export async function guardarDatos(formData: FormData) {
     volver({ error: error.message });
   }
 
-  revalidatePath("/perfil");
+  revalidatePath("/perfil", "layout");
+  revalidatePath("/vecino/[id]", "page");
   revalidatePath("/");
   volver({ aviso: "Datos guardados." });
 }
@@ -141,7 +142,8 @@ export async function subirFoto(formData: FormData) {
     await supabase.storage.from("fotos").remove(viejas);
   }
 
-  revalidatePath("/perfil");
+  revalidatePath("/perfil", "layout");
+  revalidatePath("/vecino/[id]", "page");
   revalidatePath("/");
   volver({ aviso: "Foto actualizada." });
 }
