@@ -41,6 +41,7 @@ type Publicacion = {
   imagen_url: string | null;
   imagen_mini_url: string | null;
   votos_count: number | null;
+  comentarios_count: number | null;
   oculto: boolean | null;
   creado_en: string | null;
 };
@@ -97,7 +98,7 @@ export default async function Vecino({ params, searchParams }: Props) {
   let consulta = supabase
     .from("publicaciones")
     .select(
-      "id, parroquia_id, tipo, titulo, descripcion, imagen_url, imagen_mini_url, votos_count, oculto, creado_en"
+      "id, parroquia_id, tipo, titulo, descripcion, imagen_url, imagen_mini_url, votos_count, comentarios_count, oculto, creado_en"
     )
     .eq("usuario_id", perfil.id)
     .order("creado_en", { ascending: false })
@@ -257,7 +258,11 @@ export default async function Vecino({ params, searchParams }: Props) {
                       {fecha(p.creado_en) ? ` · ${fecha(p.creado_en)}` : ""}
                     </p>
 
-                    <h2 className="font-display text-lg mt-2">{p.titulo}</h2>
+                    <h2 className="font-display text-lg mt-2">
+                      <Link href={`/p/${p.id}`} className="hover:underline">
+                        {p.titulo}
+                      </Link>
+                    </h2>
 
                     {p.descripcion ? (
                       <p className="text-sm text-tinta-600 mt-2 leading-relaxed whitespace-pre-line line-clamp-4">
@@ -274,6 +279,11 @@ export default async function Vecino({ params, searchParams }: Props) {
                     <div className="flex items-center justify-between gap-4 mt-auto pt-4">
                       <span className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
                         {p.votos_count ?? 0} {p.votos_count === 1 ? "respaldo" : "respaldos"}
+                        {" · "}
+                        <Link href={`/p/${p.id}#comentarios`} className="hover:text-tinta-900 underline">
+                          {p.comentarios_count ?? 0}{" "}
+                          {p.comentarios_count === 1 ? "comentario" : "comentarios"}
+                        </Link>
                       </span>
 
                       {esMio ? (

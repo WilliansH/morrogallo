@@ -160,6 +160,14 @@ export async function votar(formData: FormData) {
   }
 
   revalidatePath("/");
+
+  // Desde la página de la publicación se vuelve a ella; desde el feed, al feed.
+  const desde = String(formData.get("volver") ?? "");
+  if (/^\/p\/[0-9a-f-]{36}$/i.test(desde)) {
+    revalidatePath(desde);
+    redirect(desde);
+  }
+
   redirect("/");
 }
 

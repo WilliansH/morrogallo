@@ -51,6 +51,7 @@ type Publicacion = {
   imagen_url: string | null;
   imagen_mini_url: string | null;
   votos_count: number | null;
+  comentarios_count: number | null;
   creado_en: string | null;
 };
 
@@ -93,7 +94,7 @@ export default async function Feed({
   let consulta = supabase
     .from("publicaciones")
     .select(
-      "id, usuario_id, parroquia_id, tipo, titulo, descripcion, imagen_url, imagen_mini_url, votos_count, creado_en"
+      "id, usuario_id, parroquia_id, tipo, titulo, descripcion, imagen_url, imagen_mini_url, votos_count, comentarios_count, creado_en"
     )
     // oculto puede venir en null en filas viejas: null tampoco es "oculto".
     .not("oculto", "is", true)
@@ -434,7 +435,11 @@ export default async function Feed({
                       </Link>
                     </header>
 
-                    <h2 className="font-display text-xl mt-4">{p.titulo}</h2>
+                    <h2 className="font-display text-xl mt-4">
+                      <Link href={`/p/${p.id}`} className="hover:underline">
+                        {p.titulo}
+                      </Link>
+                    </h2>
 
                     {p.descripcion ? (
                       <p className="text-sm text-tinta-600 mt-2 leading-relaxed whitespace-pre-line">
@@ -489,6 +494,13 @@ export default async function Feed({
                           {p.votos_count === 1 ? "respaldo" : "respaldos"}
                         </span>
                       )}
+
+                      <Link
+                        href={`/p/${p.id}#comentarios`}
+                        className="cifra text-[11px] uppercase tracking-[0.14em] border border-arena-200 text-tinta-600 hover:border-tinta-400 hover:text-tinta-900 px-4 py-2 transition-colors"
+                      >
+                        {user ? "Comentar" : "Comentarios"} · {p.comentarios_count ?? 0}
+                      </Link>
 
                       {esAdmin ? (
                         <form action={ocultar}>

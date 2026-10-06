@@ -4,9 +4,13 @@
 -- Hasta ahora nada se borraba: el admin oculta, y el dueño no podía hacer
 -- nada. Esto le da al dueño dos botones:
 --
---   1. borrar_publicacion(id) — solo la suya. Se lleva también sus respaldos.
+--   1. borrar_publicacion(id) — solo la suya. Se lleva también sus respaldos
+--      y sus comentarios.
 --   2. borrar_mi_cuenta()     — su usuario, su perfil (nombre, correo,
---      teléfono, dirección), sus publicaciones, sus respaldos y su sesión.
+--      teléfono, dirección), sus publicaciones, sus respaldos, sus
+--      comentarios y su sesión.
+--
+-- Necesita que comentarios.sql ya esté corrido (usa la tabla comentarios).
 --
 -- Las fotos NO se borran aquí: Supabase no deja borrar archivos del storage
 -- desde SQL. Las borra la app con la sesión del dueño, y para eso van al
@@ -41,6 +45,7 @@ begin
   end if;
 
   delete from public.votos where publicacion_id = p_id;
+  delete from public.comentarios where publicacion_id = p_id;
   delete from public.publicaciones where id = p_id;
 end;
 $$;
@@ -66,6 +71,11 @@ begin
   -- Respaldos que dio, y los que recibieron sus publicaciones.
   delete from public.votos where usuario_id = v_uid;
   delete from public.votos
+   where publicacion_id in (select id from public.publicaciones where usuario_id = v_uid);
+
+  -- Sus comentarios, y los que otros dejaron en sus publicaciones.
+  delete from public.comentarios where usuario_id = v_uid;
+  delete from public.comentarios
    where publicacion_id in (select id from public.publicaciones where usuario_id = v_uid);
 
   delete from public.publicaciones where usuario_id = v_uid;
