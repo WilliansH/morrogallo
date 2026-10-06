@@ -9,13 +9,15 @@
 -- y el historial de la UCD (valores_referencia). Son datos del municipio,
 -- no de las personas: solo pierden el autor.
 --
--- LAS FOTOS NO: Supabase no deja borrar archivos del storage desde SQL.
--- Se vacían a mano: Storage → bucket "fotos" → menú ⋯ → "Empty bucket".
+-- LAS FOTOS: Supabase no deja borrarlas desde SQL. Las borra el workflow de
+-- GitHub (.github/workflows/supabase.yml) en el mismo push, solo la vez que
+-- esta migración se aplica.
 --
--- NO SE PUEDE DESHACER. El SQL Editor corre todo como un bloque: si una
--- línea falla, no se aplica nada.
+-- NO SE PUEDE DESHACER. Corre UNA sola vez: Supabase anota cada migración
+-- aplicada y no la repite en los pushes siguientes.
 --
--- Después: registrarse de nuevo y correr admins.sql para volver a ser admin.
+-- Después: registrarse de nuevo. Quien está en la lista de la migración
+-- 000003 queda como admin solo, sin correr nada.
 -- ============================================================
 
 update public.estadisticas       set creado_por      = null where creado_por      is not null;

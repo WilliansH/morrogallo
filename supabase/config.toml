@@ -1,0 +1,4 @@
+# Lo mínimo para que la CLI de Supabase sepa dónde están las migraciones.
+# El proyecto real es vtsvwvrbdwnomfisoygn; el workflow de GitHub se enlaza
+# a él con `supabase link`.
+project_id = "morrogallo"

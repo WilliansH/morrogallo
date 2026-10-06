@@ -10,7 +10,7 @@
 --      teléfono, dirección), sus publicaciones, sus respaldos, sus
 --      comentarios y su sesión.
 --
--- Necesita que comentarios.sql ya esté corrido (usa la tabla comentarios).
+-- Va después de la migración de comentarios (usa esa tabla).
 --
 -- Las fotos NO se borran aquí: Supabase no deja borrar archivos del storage
 -- desde SQL. Las borra la app con la sesión del dueño, y para eso van al
