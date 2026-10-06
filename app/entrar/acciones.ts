@@ -33,6 +33,29 @@ export async function iniciarSesion(formData: FormData) {
     password: clave,
   });
 
+  // Cuenta sin confirmar: se manda otro enlace aquí mismo, para que nadie
+  // quede trabado con un enlace vencido.
+  if (error?.code === "email_not_confirmed") {
+    const { error: errorReenvio } = await supabase.auth.resend({
+      type: "signup",
+      email: correo,
+      options: { emailRedirectTo: `${await origen()}/auth/confirmar` },
+    });
+
+    volver({
+      ...(errorReenvio
+        ? {
+            error:
+              "Tu cuenta todavía no está confirmada y ahora mismo no podemos mandar otro correo (hay un tope de envíos por hora). Prueba de nuevo en un rato.",
+          }
+        : {
+            aviso:
+              "Tu cuenta todavía no está confirmada. Te mandamos un enlace nuevo: ábrelo en este mismo navegador. Revisa también spam.",
+          }),
+      modo: "entrar",
+    });
+  }
+
   if (error) {
     volver({
       error:
