@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import Footer from "../footer";
 import Nav from "../nav";
 import Ticker from "../ticker";
+import Transicion, { AFUERA } from "../transicion";
 
 export const revalidate = 300;
 
@@ -203,11 +204,14 @@ export default async function Penalver({
       <Nav />
 
 
+      <Transicion>
+
+
       <main className="flex-1">
         {bienvenida ? (
           <p
             role="status"
-            className="mx-auto max-w-6xl px-6 pt-6 cifra text-sm text-monte-600"
+            className="aviso mx-auto max-w-6xl px-6 pt-6 cifra text-sm text-monte-600"
           >
             Cuenta confirmada. Bienvenido a Morrogallo.
           </p>
@@ -243,6 +247,7 @@ export default async function Penalver({
                 </a>
                 <Link
                   href="/"
+                  transitionTypes={AFUERA}
                   className="cifra text-xs uppercase tracking-[0.14em] border border-mar-500 text-mar-200 px-6 py-3 hover:border-arena-50 hover:text-arena-50 transition-colors"
                 >
                   Ver la comunidad
@@ -349,6 +354,9 @@ export default async function Penalver({
         </section>
 
       </main>
+
+
+      </Transicion>
 
       <Footer />
     </>

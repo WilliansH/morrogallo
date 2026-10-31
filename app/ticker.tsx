@@ -77,7 +77,7 @@ export default async function Ticker() {
     fechaBcv !== null && fechaBcv === fechaUcd ? fechaBcv : null;
 
   return (
-    <div className="bg-tinta-900 text-arena-100">
+    <div style={{ viewTransitionName: "cinta" }} className="bg-tinta-900 text-arena-100">
       <div className="mx-auto max-w-6xl px-6 py-2 flex flex-wrap items-center gap-x-8 gap-y-1 cifra text-[11px] uppercase tracking-[0.14em]">
         <Valor
           etiqueta="BCV"
@@ -89,7 +89,7 @@ export default async function Ticker() {
         <Valor
           etiqueta="UCD"
           monto={ucd?.valor}
-          nota={ucd?.origen === "referencial" ? "ref." : undefined}
+          nota={ucd?.origen === "referencial" ? "ref." : ucd?.origen === "publicada" ? "Alcaldía" : undefined}
           fecha={fechaCompartida ? null : fechaUcd}
           fuente={ucd?.fuente}
         />

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Fraunces, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
+
+import BarraCarga from "./barra-carga";
 import Reveal from "./reveal";
 
 const fraunces = Fraunces({
@@ -72,7 +75,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: marcarJs }} />
       </head>
-      <body className="min-h-full flex flex-col bg-arena-50 text-tinta-900">
+      {/* pb-14: en el celular el menú de secciones va fijo abajo y tapaba el pie. */}
+      <body className="min-h-full flex flex-col bg-arena-50 text-tinta-900 pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
+        <Suspense fallback={null}>
+          <BarraCarga />
+        </Suspense>
         {children}
         <Reveal />
       </body>

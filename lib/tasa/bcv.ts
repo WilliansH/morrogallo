@@ -154,19 +154,34 @@ function esParidad(valor: unknown): valor is number {
   return typeof valor === "number" && Number.isFinite(valor) && valor > 0.5 && valor < 3;
 }
 
+/** ve.dolarapi.com → el euro oficial que publica el BCV, igual que el dólar. */
+async function euroDesdeDolarApi(): Promise<TasaBcv | null> {
+  const datos = (await pedirJson("https://ve.dolarapi.com/v1/euros/oficial")) as
+    | { promedio?: number; fechaActualizacion?: string }
+    | null;
+
+  if (!datos || !esPlausible(datos.promedio)) return null;
+
+  return {
+    valor: datos.promedio,
+    fecha: datos.fechaActualizacion ?? null,
+    fuente: "Euro del BCV vía ve.dolarapi.com",
+  };
+}
+
 /**
  * Tipo de cambio del euro según el BCV — el número del que sale la UCD.
  *
- * El BCV no publica el euro en ninguna API abierta que responda desde
- * Venezuela (se probaron seis: pydolarve y exchangedyn no resuelven, dolarvzla
- * pide llave, y ve.dolarapi solo trae el dólar). Así que se calcula igual que
- * lo calcula el propio BCV: su tasa del dólar por la paridad euro/dólar del
- * mercado internacional.
- *
- * Por eso el resultado es REFERENCIAL y el sitio lo marca como tal. El valor
- * oficial de la UCD para un municipio es el que publique su superintendencia.
+ * Primero el euro oficial, que ve.dolarapi.com publica desde el BCV igual
+ * que el dólar. Si esa fuente no responde, se calcula como lo calcula el
+ * propio BCV: su tasa del dólar por la paridad euro/dólar del mercado
+ * internacional. El cálculo queda unas décimas por encima o por debajo del
+ * oficial, así que en ese caso `calculado` va en true y el sitio lo marca.
  */
-export async function consultarEuroBcv(): Promise<TasaBcv | null> {
+export async function consultarEuroBcv(): Promise<(TasaBcv & { calculado: boolean }) | null> {
+  const oficial = await euroDesdeDolarApi();
+  if (oficial) return { ...oficial, calculado: false };
+
   const [dolar, paridad] = await Promise.all([consultarTasaBcv(), paridadEurUsd()]);
 
   if (!dolar || paridad === null) return null;
@@ -179,6 +194,7 @@ export async function consultarEuroBcv(): Promise<TasaBcv | null> {
     // La fecha que importa es la del BCV, no la de la paridad.
     fecha: dolar.fecha,
     fuente: "Calculado: dólar del BCV × paridad euro/dólar",
+    calculado: true,
   };
 }
 

@@ -1,15 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ViewTransition } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 
 import { ocultar, publicar, votar } from "./acciones-feed";
 import BotonPublicar from "./boton-publicar";
+import BotonRespaldo from "./boton-respaldo";
 import ComprimirImagen from "./comprimir-imagen";
 import Footer from "./footer";
 import Morrogallo from "./morrogallo";
 import Nav from "./nav";
 import Ticker from "./ticker";
+import Transicion, { ADENTRO, FotoViajera } from "./transicion";
 
 export const metadata = {
   title: "Morrogallo — lo que pasa en el municipio",
@@ -26,6 +29,7 @@ const etiqueta =
 const boton =
   "cifra text-xs uppercase tracking-[0.14em] bg-estrella-500 hover:bg-estrella-600 text-arena-50 px-6 py-3 transition-colors";
 const tarjeta = "border border-arena-200 bg-white/60 p-6";
+const filtro = "subraya pb-0.5 hover:text-tinta-900 aria-[current=page]:text-tinta-900";
 
 const NOMBRE_TIPO: Record<string, string> = {
   noticia: "Noticia",
@@ -178,38 +182,51 @@ export default async function Feed({
     return q ? `/?${q}` : "/";
   }
 
+  // A dónde vuelve quien respalda sin JavaScript: a esta misma página del feed.
+  const aqui = enlace({ pagina: nPagina > 1 ? String(nPagina) : undefined });
+
   return (
     <>
       <Ticker />
       <Nav />
 
+      <Transicion>
       <main className="flex-1 bg-arena-50">
         {/* Quien llega sin cuenta necesita entender dónde cayó. */}
         {user ? null : (
           <section className="bg-mar-900 text-arena-50">
             <div className="mx-auto max-w-3xl px-6 py-12 grid gap-10 md:grid-cols-[1fr_14rem] md:items-center">
               <div>
-                <p className="cifra text-xs uppercase tracking-[0.2em] text-mar-200">
+                <p className="entrada cifra text-xs uppercase tracking-[0.2em] text-mar-200">
                   Municipio Fernando de Peñalver
                 </p>
-                <h1 className="font-display text-4xl md:text-5xl leading-tight mt-4">
+                <h1
+                  style={{ "--i": 1 } as React.CSSProperties}
+                  className="entrada font-display text-4xl md:text-5xl leading-tight mt-4"
+                >
                   Lo que pasa en el pueblo, contado por el pueblo.
                 </h1>
-                <p className="text-mar-200 mt-4 leading-relaxed">
+                <p
+                  style={{ "--i": 2 } as React.CSSProperties}
+                  className="entrada text-mar-200 mt-4 leading-relaxed"
+                >
                   Noticias del barrio, reseñas de dónde comer, fotos de la calle y
                   del puerto. Te registras con tu correo, eliges tu parroquia y
                   publicas. Lo que los vecinos respaldan, sube.
                 </p>
-                <div className="flex flex-wrap gap-4 mt-7">
+                <div
+                  style={{ "--i": 3 } as React.CSSProperties}
+                  className="entrada flex flex-wrap gap-4 mt-7"
+                >
                   <Link
                     href="/entrar?modo=registro"
-                    className="cifra text-xs uppercase tracking-[0.14em] bg-arena-50 text-mar-900 px-6 py-3 hover:bg-arena-100 transition-colors"
+                    className="pulsable cifra text-xs uppercase tracking-[0.14em] bg-arena-50 text-mar-900 px-6 py-3 hover:bg-arena-100"
                   >
                     Crear mi cuenta
                   </Link>
                   <Link
                     href="/penalver"
-                    className="cifra text-xs uppercase tracking-[0.14em] border border-mar-500 text-mar-200 px-6 py-3 hover:border-arena-50 hover:text-arena-50 transition-colors"
+                    className="pulsable cifra text-xs uppercase tracking-[0.14em] border border-mar-500 text-mar-200 px-6 py-3 hover:border-arena-50 hover:text-arena-50"
                   >
                     Datos del municipio
                   </Link>
@@ -220,7 +237,7 @@ export default async function Feed({
               <Morrogallo
                 piel="contra"
                 alt="El Morrogallo: morrocoy con cabeza y cola de gallo"
-                className="w-48 md:w-full justify-self-center"
+                className="entrada w-48 md:w-full justify-self-center"
               />
             </div>
           </section>
@@ -228,7 +245,7 @@ export default async function Feed({
 
         <div className="mx-auto max-w-3xl px-6 py-10">
           {bienvenida ? (
-            <p role="status" className="cifra text-sm text-monte-600 mb-6">
+            <p role="status" className="aviso cifra text-sm text-monte-600 mb-6">
               Cuenta confirmada. Bienvenido a Morrogallo.
             </p>
           ) : null}
@@ -236,7 +253,7 @@ export default async function Feed({
           {error ? (
             <p
               role="alert"
-              className="mb-6 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
+              className="aviso mb-6 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
             >
               {error}
             </p>
@@ -245,7 +262,7 @@ export default async function Feed({
           {aviso ? (
             <p
               role="status"
-              className="mb-6 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
+              className="aviso mb-6 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
             >
               {aviso}
             </p>
@@ -259,7 +276,7 @@ export default async function Feed({
              * línea de JavaScript, y si el envío falló se queda abierto para
              * que nadie pierda lo que escribió.
              */
-            <details open={Boolean(error)} className="border border-arena-200 bg-white/60 mb-8">
+            <details open={Boolean(error)} className="tarjeta-viva border border-arena-200 bg-white/60 mb-8">
               <summary className="flex items-center gap-3 p-4">
                 {miPerfil?.foto_mini_url || miPerfil?.foto_url ? (
                   <Image
@@ -274,14 +291,14 @@ export default async function Feed({
                   <span className="w-9 h-9 border border-arena-200 bg-arena-100 shrink-0" />
                 )}
 
-                <span className="flex-1 border border-arena-200 bg-arena-50 px-4 py-2.5 text-sm text-tinta-400">
+                <span className="flex-1 border border-arena-200 bg-arena-50 px-4 py-2.5 text-sm text-tinta-400 transition-colors hover:border-tinta-400">
                   {miNombre
                     ? `¿Qué está pasando, ${miNombre}?`
                     : "¿Qué está pasando en el pueblo?"}
                 </span>
               </summary>
 
-              <form action={publicar} className="px-4 pb-5">
+              <form action={publicar} className="despliega px-4 pb-5">
               <input type="hidden" name="clave" value={claveEnvio} />
               <div className="flex flex-col gap-5 mt-1">
                 <div className="grid sm:grid-cols-2 gap-5">
@@ -357,13 +374,15 @@ export default async function Feed({
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 mb-6">
             <Link
               href={enlace({ orden: undefined, pagina: undefined })}
-              className={porVotos ? "hover:text-tinta-900" : "text-tinta-900"}
+              aria-current={porVotos ? undefined : "page"}
+              className={filtro}
             >
               Recientes
             </Link>
             <Link
               href={enlace({ orden: "votados", pagina: undefined })}
-              className={porVotos ? "text-tinta-900" : "hover:text-tinta-900"}
+              aria-current={porVotos ? "page" : undefined}
+              className={filtro}
             >
               Más respaldadas
             </Link>
@@ -371,7 +390,8 @@ export default async function Feed({
             <span className="ml-auto flex flex-wrap gap-x-4 gap-y-2">
               <Link
                 href={enlace({ parroquia: undefined, pagina: undefined })}
-                className={parroquia ? "hover:text-tinta-900" : "text-tinta-900"}
+                aria-current={parroquia ? undefined : "page"}
+                className={filtro}
               >
                 Todas
               </Link>
@@ -379,7 +399,8 @@ export default async function Feed({
                 <Link
                   key={p.id}
                   href={enlace({ parroquia: p.id as string, pagina: undefined })}
-                  className={parroquia === p.id ? "text-tinta-900" : "hover:text-tinta-900"}
+                  aria-current={parroquia === p.id ? "page" : undefined}
+                  className={filtro}
                 >
                   {p.nombre}
                 </Link>
@@ -388,6 +409,13 @@ export default async function Feed({
           </div>
 
           {/* ---------------- Feed ---------------- */}
+          {/* Cambiar de filtro funde la lista vieja con la nueva. */}
+          <ViewTransition
+            key={`${orden ?? ""}|${parroquia ?? ""}|${nPagina}`}
+            enter="fundido"
+            exit="fundido"
+            default="none"
+          >
           <section className="flex flex-col gap-4">
             {lista.length === 0 ? (
               <p className={`${tarjeta} text-sm text-tinta-600`}>
@@ -395,16 +423,22 @@ export default async function Feed({
                 pueblo, cuéntalo tú.
               </p>
             ) : (
-              lista.map((p) => {
+              lista.map((p, i) => {
                 const autor = p.usuario_id ? autores.get(p.usuario_id) : null;
                 const yaVote = misVotos.has(p.id);
 
                 return (
-                  <article key={p.id} className={tarjeta}>
+                  <article
+                    key={p.id}
+                    id={`p-${p.id}`}
+                    style={{ "--i": i } as React.CSSProperties}
+                    className={`${tarjeta} entrada tarjeta-viva scroll-mt-24`}
+                  >
                     {/* Tocar el nombre o la foto lleva al perfil público de quien publicó. */}
                     <header className="flex items-center gap-3">
                       <Link
                         href={p.usuario_id ? `/vecino/${p.usuario_id}` : "#"}
+                        transitionTypes={ADENTRO}
                         className="flex items-center gap-3 min-w-0 group"
                       >
                       {autor?.foto ? (
@@ -436,7 +470,11 @@ export default async function Feed({
                     </header>
 
                     <h2 className="font-display text-xl mt-4">
-                      <Link href={`/p/${p.id}`} className="hover:underline">
+                      <Link
+                        href={`/p/${p.id}`}
+                        transitionTypes={ADENTRO}
+                        className="hover:text-mar-700 transition-colors"
+                      >
                         {p.titulo}
                       </Link>
                     </h2>
@@ -448,45 +486,39 @@ export default async function Feed({
                     ) : null}
 
                     {p.imagen_mini_url || p.imagen_url ? (
-                      <a
-                        href={p.imagen_url ?? p.imagen_mini_url ?? "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block mt-4"
+                      <Link
+                        href={`/p/${p.id}`}
+                        transitionTypes={ADENTRO}
+                        className="foto-viva block mt-4 border border-arena-200"
                       >
-                        {/* El feed carga la miniatura; la grande solo si la abren. */}
+                        {/* El feed carga la miniatura; la grande se ve en la publicación. */}
                         {/*
                           * Tope de altura: una foto vertical de celular medía
                           * 1.200px de alto en pantalla y se comía el feed
                           * entero. object-contain para no recortarle nada a
                           * nadie: se ve completa, dentro del tope.
                           */}
-                        <Image
-                          src={(p.imagen_mini_url ?? p.imagen_url) as string}
-                          alt={p.titulo ?? ""}
-                          width={400}
-                          height={400}
-                          unoptimized
-                          className="w-full h-auto max-h-[28rem] object-contain bg-arena-100 border border-arena-200"
-                        />
-                      </a>
+                        <FotoViajera id={p.id}>
+                          <Image
+                            src={(p.imagen_mini_url ?? p.imagen_url) as string}
+                            alt={p.titulo ?? ""}
+                            width={400}
+                            height={400}
+                            unoptimized
+                            loading={i < 2 ? "eager" : "lazy"}
+                            className="w-full h-auto max-h-[28rem] object-contain bg-arena-100"
+                          />
+                        </FotoViajera>
+                      </Link>
                     ) : null}
 
                     <div className="flex items-center gap-4 mt-5">
                       {user ? (
                         <form action={votar}>
                           <input type="hidden" name="publicacion" value={p.id} />
+                          <input type="hidden" name="volver" value={aqui} />
                           {yaVote ? <input type="hidden" name="quitar" value="1" /> : null}
-                          <button
-                            type="submit"
-                            className={`cifra text-[11px] uppercase tracking-[0.14em] border px-4 py-2 transition-colors ${
-                              yaVote
-                                ? "border-monte-400/50 text-monte-600"
-                                : "border-arena-200 text-tinta-600 hover:border-tinta-400 hover:text-tinta-900"
-                            }`}
-                          >
-                            {yaVote ? "Respaldada" : "Respaldar"} · {p.votos_count ?? 0}
-                          </button>
+                          <BotonRespaldo votado={yaVote} votos={p.votos_count ?? 0} />
                         </form>
                       ) : (
                         <span className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
@@ -497,7 +529,8 @@ export default async function Feed({
 
                       <Link
                         href={`/p/${p.id}#comentarios`}
-                        className="cifra text-[11px] uppercase tracking-[0.14em] border border-arena-200 text-tinta-600 hover:border-tinta-400 hover:text-tinta-900 px-4 py-2 transition-colors"
+                        transitionTypes={ADENTRO}
+                        className="pulsable cifra text-[11px] uppercase tracking-[0.14em] border border-arena-200 text-tinta-600 hover:border-tinta-400 hover:text-tinta-900 px-4 py-2 transition-colors"
                       >
                         {user ? "Comentar" : "Comentarios"} · {p.comentarios_count ?? 0}
                       </Link>
@@ -519,6 +552,7 @@ export default async function Feed({
               })
             )}
           </section>
+          </ViewTransition>
 
           {/* ---------------- Páginas ---------------- */}
           {nPagina > 1 || hayMas ? (
@@ -548,6 +582,7 @@ export default async function Feed({
           ) : null}
         </div>
       </main>
+      </Transicion>
 
       <Footer />
     </>

@@ -6,6 +6,7 @@ import { consultarEuroBcv } from "@/lib/tasa/bcv";
 import { CLAVE_UCD } from "@/lib/tasa/valores";
 
 import { guardarUcd } from "./acciones";
+import Transicion, { AFUERA } from "../../transicion";
 
 export const metadata = { title: "UCD" };
 
@@ -85,10 +86,12 @@ export default async function PanelUcd({
   const euro = await consultarEuroBcv();
 
   return (
+    <Transicion>
     <main className="flex-1 bg-arena-50">
       <div className="mx-auto max-w-2xl px-6 py-16 md:py-20">
         <Link
           href="/"
+          transitionTypes={AFUERA}
           className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 hover:text-tinta-900 transition-colors"
         >
           ← Morrogallo
@@ -99,16 +102,16 @@ export default async function PanelUcd({
           La Unidad de Cuenta Dinámica es el tipo de cambio de la moneda de
           mayor valor que publica el BCV — el euro — y con ella los estados y
           municipios calculan tributos, tasas, accesorios y sanciones. Mientras
-          nadie publique un valor aquí, el ticker muestra el calculado del BCV
-          marcado «ref.». Lo que cargues en esta página manda sobre el
-          calculado: úsalo cuando la Alcaldía publique el suyo, que es el único
-          que vale para Peñalver.
+          nadie publique un valor aquí, el ticker muestra el euro oficial del
+          BCV (y si esa fuente se cae, uno calculado, marcado «ref.»). Lo que
+          cargues en esta página manda sobre el del BCV: úsalo cuando la
+          Alcaldía publique el suyo, que es el único que vale para Peñalver.
         </p>
 
         {error ? (
           <p
             role="alert"
-            className="mt-8 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
+            className="aviso mt-8 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
           >
             {error}
           </p>
@@ -117,7 +120,7 @@ export default async function PanelUcd({
         {aviso ? (
           <p
             role="status"
-            className="mt-8 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
+            className="aviso mt-8 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
           >
             {aviso}
           </p>
@@ -243,5 +246,6 @@ export default async function PanelUcd({
         </section>
       </div>
     </main>
+    </Transicion>
   );
 }

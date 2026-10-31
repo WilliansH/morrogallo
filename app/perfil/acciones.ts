@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { rutaDe } from "@/lib/fotos";
 import { createClient } from "@/lib/supabase/server";
 
-const MAX_FOTO = 5 * 1024 * 1024; // 5 MB antes de comprimir
+const MAX_FOTO = 4 * 1024 * 1024 - 64 * 1024; // el tope de next.config, menos el sobre del formulario
 
 function volver(params: Record<string, string>) {
   redirect(`/perfil/ajustes?${new URLSearchParams(params).toString()}`);
@@ -79,7 +79,7 @@ export async function subirFoto(formData: FormData) {
   }
 
   if (archivos.some((a) => a.size > MAX_FOTO)) {
-    volver({ error: "La imagen pesa más de 5 MB. Prueba con una más liviana." });
+    volver({ error: "La imagen pesa más de 4 MB. Prueba con una más liviana." });
     return;
   }
 

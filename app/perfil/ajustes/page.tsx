@@ -5,11 +5,13 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 import { borrarCuenta, cambiarClave, guardarDatos, subirFoto } from "../acciones";
+import BotonPublicar from "../../boton-publicar";
 import ComprimirFoto from "../comprimir-foto";
 
 import Footer from "../../footer";
 import Nav from "../../nav";
 import Ticker from "../../ticker";
+import Transicion, { AFUERA } from "../../transicion";
 
 export const metadata = { title: "Ajustes de mi cuenta" };
 
@@ -56,10 +58,13 @@ export default async function Perfil({
       <Ticker />
       <Nav />
 
+      <Transicion>
+
       <main className="flex-1 bg-arena-50">
       <div className="mx-auto max-w-2xl px-6 py-16 md:py-20">
         <Link
           href={`/vecino/${user.id}`}
+          transitionTypes={AFUERA}
           className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 hover:text-tinta-900 transition-colors"
         >
           ← Mi perfil
@@ -91,7 +96,7 @@ export default async function Perfil({
         {error ? (
           <p
             role="alert"
-            className="mt-8 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
+            className="aviso mt-8 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
           >
             {error}
           </p>
@@ -100,7 +105,7 @@ export default async function Perfil({
         {aviso ? (
           <p
             role="status"
-            className="mt-8 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
+            className="aviso mt-8 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
           >
             {aviso}
           </p>
@@ -110,7 +115,7 @@ export default async function Perfil({
         <section id="foto" className={`${seccion} mt-10 scroll-mt-24`}>
           <h2 className={titulo}>Foto</h2>
 
-          <div className="flex items-center gap-6 mt-5">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-6 mt-5">
             {perfil?.foto_mini_url || perfil?.foto_url ? (
               <Image
                 src={(perfil.foto_mini_url ?? perfil.foto_url) as string}
@@ -131,9 +136,9 @@ export default async function Perfil({
                 Elegir imagen
               </label>
               <ComprimirFoto className="block w-full text-sm text-tinta-600 file:cifra file:mr-4 file:border file:border-arena-200 file:bg-arena-100 file:px-4 file:py-2 file:text-xs file:uppercase file:tracking-[0.14em] file:text-tinta-600" />
-              <button className={`${boton} mt-4`} type="submit">
+              <BotonPublicar className={`${boton} mt-4`} enviando="Subiendo…">
                 Subir foto
-              </button>
+              </BotonPublicar>
             </form>
           </div>
         </section>
@@ -299,6 +304,8 @@ export default async function Perfil({
         </details>
       </div>
     </main>
+
+      </Transicion>
 
       <Footer />
     </>

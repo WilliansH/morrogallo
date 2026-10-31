@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-const MAX_IMAGEN = 5 * 1024 * 1024; // 5 MB: el tope para quien sube sin JavaScript
+const MAX_IMAGEN = 4 * 1024 * 1024 - 64 * 1024; // el tope de next.config, menos el sobre del formulario
 const TIPOS = ["noticia", "resena", "foto"] as const;
 
 function volver(params: Record<string, string>): never {
@@ -42,7 +42,7 @@ async function subirImagen(
   if (utiles.length === 0) return { url: null, mini: null, error: null };
 
   if (utiles.some((a) => a.size > MAX_IMAGEN)) {
-    return { url: null, mini: null, error: "La imagen pesa más de 5 MB." };
+    return { url: null, mini: null, error: "La imagen pesa más de 4 MB." };
   }
 
   const mini = utiles.find((a) => a.name.startsWith("mini")) ?? utiles[0];
@@ -134,14 +134,33 @@ export async function publicar(formData: FormData) {
   volver({ aviso: "Publicado." });
 }
 
-/** Un voto por persona: lo garantiza la base, no esta función. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * A dónde se puede volver después de respaldar: el feed (con sus filtros y su
+ * página) o una publicación. Nada más: el valor viene del formulario, y sin
+ * esta lista sería una redirección abierta a cualquier sitio.
+ */
+const VUELTA = /^\/(p\/[0-9a-f-]{36})?(\?[A-Za-z0-9=&%._-]*)?$/i;
+
+/**
+ * Un voto por persona: lo garantiza la base, no esta función.
+ *
+ * Con JavaScript no redirige: refresca y ya, así quien respalda se queda
+ * donde estaba en el feed (antes cada respaldo lo devolvía al inicio, sin
+ * filtros, en la página 1). Sin JavaScript vuelve a la misma página y a la
+ * misma tarjeta, por el #ancla.
+ */
 export async function votar(formData: FormData) {
   const { supabase, user } = await usuarioActual();
 
   const publicacion = String(formData.get("publicacion") ?? "");
   const quitar = formData.get("quitar") === "1";
+  const conJs = formData.get("js") === "1";
+  const pedida = String(formData.get("volver") ?? "/");
+  const vuelta = VUELTA.test(pedida) ? pedida : "/";
 
-  if (!publicacion) {
+  if (!UUID.test(publicacion)) {
     volver({ error: "No se supo qué publicación era." });
   }
 
@@ -160,15 +179,11 @@ export async function votar(formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath(`/p/${publicacion}`);
 
-  // Desde la página de la publicación se vuelve a ella; desde el feed, al feed.
-  const desde = String(formData.get("volver") ?? "");
-  if (/^\/p\/[0-9a-f-]{36}$/i.test(desde)) {
-    revalidatePath(desde);
-    redirect(desde);
-  }
+  if (conJs) return;
 
-  redirect("/");
+  redirect(`${vuelta}#p-${publicacion}`);
 }
 
 /** Moderación: no borra, oculta. Lo permite la política admin_modera_publicacion. */
@@ -177,13 +192,20 @@ export async function ocultar(formData: FormData) {
 
   const publicacion = String(formData.get("publicacion") ?? "");
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("publicaciones")
     .update({ oculto: true })
-    .eq("id", publicacion);
+    .eq("id", publicacion)
+    .select("id");
 
   if (error) {
     volver({ error: error.message });
+  }
+
+  // Si la política no lo deja (no es admin), update no da error: no toca
+  // ninguna fila. Sin esto se decía "oculta" aunque siguiera a la vista.
+  if (!data || data.length === 0) {
+    volver({ error: "No se pudo ocultar esa publicación." });
   }
 
   revalidatePath("/");

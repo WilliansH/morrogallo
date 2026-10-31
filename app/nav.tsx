@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 import { cerrarSesion } from "./entrar/acciones";
+import { MenuAbajo, MenuArriba } from "./menu";
 import Morrogallo from "./morrogallo";
 
 /**
@@ -28,33 +29,21 @@ export default async function Nav() {
   const comoSeLlama = perfil?.nombre_visible?.trim() || user?.email || "";
 
   return (
-  <header className="sticky top-0 z-50 bg-arena-50/90 backdrop-blur border-b border-arena-200">
+  <>
+  <header
+    style={{ viewTransitionName: "barra" }}
+    className="sticky top-0 z-50 bg-arena-50/90 backdrop-blur border-b border-arena-200"
+  >
     <nav className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
       <Link
         href="/"
-        className="flex items-center gap-2 font-display text-xl tracking-tight text-tinta-900"
+        className="pulsable flex items-center gap-2 font-display text-xl tracking-tight text-tinta-900"
       >
         <Morrogallo className="h-11 w-auto shrink-0" />
         Morrogallo
       </Link>
 
-      <ul className="hidden md:flex items-center gap-8 text-sm text-tinta-600">
-        <li>
-          <Link className="hover:text-tinta-900 transition-colors" href="/">
-            Comunidad
-          </Link>
-        </li>
-        <li>
-          <Link className="hover:text-tinta-900 transition-colors" href="/penalver">
-            Peñalver
-          </Link>
-        </li>
-        <li>
-          <Link className="hover:text-tinta-900 transition-colors" href="/estadisticas">
-            Estadísticas
-          </Link>
-        </li>
-      </ul>
+      <MenuArriba />
 
       {user ? (
         <div className="flex items-center gap-4">
@@ -73,7 +62,7 @@ export default async function Nav() {
                 className="w-7 h-7 object-cover border border-arena-200"
               />
             ) : null}
-            <span className="text-sm text-tinta-600 group-hover:text-tinta-900 max-w-[16ch] truncate transition-colors">
+            <span className="hidden sm:inline text-sm text-tinta-600 group-hover:text-tinta-900 max-w-[16ch] truncate transition-colors">
               {comoSeLlama}
             </span>
           </Link>
@@ -96,5 +85,7 @@ export default async function Nav() {
       )}
     </nav>
   </header>
+  <MenuAbajo conCuenta={Boolean(user)} />
+  </>
   );
 }

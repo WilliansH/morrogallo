@@ -9,6 +9,7 @@ import { borrarPublicacion } from "../acciones";
 import Footer from "../../footer";
 import Nav from "../../nav";
 import Ticker from "../../ticker";
+import Transicion, { ADENTRO, AFUERA, FotoViajera } from "../../transicion";
 
 const POR_PAGINA = 24;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -128,10 +129,13 @@ export default async function Vecino({ params, searchParams }: Props) {
       <Ticker />
       <Nav />
 
+      <Transicion>
+
       <main className="flex-1 bg-arena-50">
         <div className="mx-auto max-w-3xl px-6 py-12 md:py-16">
           <Link
             href="/"
+            transitionTypes={AFUERA}
             className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 hover:text-tinta-900 transition-colors"
           >
             ← Comunidad
@@ -170,6 +174,7 @@ export default async function Vecino({ params, searchParams }: Props) {
             {esMio ? (
               <Link
                 href="/perfil/ajustes"
+                transitionTypes={ADENTRO}
                 title="Ajustes"
                 aria-label="Ajustes de mi cuenta"
                 className="ml-auto self-start shrink-0 p-2 border border-arena-200 text-tinta-600 hover:text-tinta-900 hover:border-tinta-400 transition-colors"
@@ -195,7 +200,7 @@ export default async function Vecino({ params, searchParams }: Props) {
           {error ? (
             <p
               role="alert"
-              className="mt-8 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
+              className="aviso mt-8 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
             >
               {error}
             </p>
@@ -204,7 +209,7 @@ export default async function Vecino({ params, searchParams }: Props) {
           {aviso ? (
             <p
               role="status"
-              className="mt-8 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
+              className="aviso mt-8 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
             >
               {aviso}
             </p>
@@ -226,27 +231,29 @@ export default async function Vecino({ params, searchParams }: Props) {
                   : `${nombre} todavía no ha publicado nada.`}
               </p>
             ) : (
-              lista.map((p) => (
+              lista.map((p, i) => (
                 <article
                   key={p.id}
-                  className="border border-arena-200 bg-white/60 flex flex-col"
+                  style={{ "--i": i } as React.CSSProperties}
+                  className="entrada tarjeta-viva border border-arena-200 bg-white/60 flex flex-col"
                 >
                   {p.imagen_mini_url || p.imagen_url ? (
-                    <a
-                      href={p.imagen_url ?? p.imagen_mini_url ?? "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
+                    <Link
+                      href={`/p/${p.id}`}
+                      transitionTypes={ADENTRO}
+                      className="foto-viva block border-b border-arena-200"
                     >
-                      <Image
-                        src={(p.imagen_mini_url ?? p.imagen_url) as string}
-                        alt={p.titulo ?? ""}
-                        width={320}
-                        height={320}
-                        unoptimized
-                        className="w-full aspect-square object-cover bg-arena-100 border-b border-arena-200"
-                      />
-                    </a>
+                      <FotoViajera id={p.id}>
+                        <Image
+                          src={(p.imagen_mini_url ?? p.imagen_url) as string}
+                          alt={p.titulo ?? ""}
+                          width={320}
+                          height={320}
+                          unoptimized
+                          className="w-full aspect-square object-cover bg-arena-100"
+                        />
+                      </FotoViajera>
+                    </Link>
                   ) : null}
 
                   <div className="p-5 flex flex-col flex-1">
@@ -259,7 +266,11 @@ export default async function Vecino({ params, searchParams }: Props) {
                     </p>
 
                     <h2 className="font-display text-lg mt-2">
-                      <Link href={`/p/${p.id}`} className="hover:underline">
+                      <Link
+                        href={`/p/${p.id}`}
+                        transitionTypes={ADENTRO}
+                        className="hover:text-mar-700 transition-colors"
+                      >
                         {p.titulo}
                       </Link>
                     </h2>
@@ -280,7 +291,11 @@ export default async function Vecino({ params, searchParams }: Props) {
                       <span className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400">
                         {p.votos_count ?? 0} {p.votos_count === 1 ? "respaldo" : "respaldos"}
                         {" · "}
-                        <Link href={`/p/${p.id}#comentarios`} className="hover:text-tinta-900 underline">
+                        <Link
+                          href={`/p/${p.id}#comentarios`}
+                          transitionTypes={ADENTRO}
+                          className="hover:text-tinta-900 underline"
+                        >
                           {p.comentarios_count ?? 0}{" "}
                           {p.comentarios_count === 1 ? "comentario" : "comentarios"}
                         </Link>
@@ -340,6 +355,8 @@ export default async function Vecino({ params, searchParams }: Props) {
           ) : null}
         </div>
       </main>
+
+      </Transicion>
 
       <Footer />
     </>

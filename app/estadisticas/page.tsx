@@ -7,6 +7,7 @@ import { aportarEstadistica, cambiarSello } from "./acciones";
 import Footer from "../footer";
 import Nav from "../nav";
 import Ticker from "../ticker";
+import Transicion, { AFUERA } from "../transicion";
 
 export const metadata = {
   title: "Estadísticas",
@@ -174,10 +175,13 @@ export default async function Estadisticas({
       <Ticker />
       <Nav />
 
+      <Transicion>
+
       <main className="flex-1 bg-arena-50">
       <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
         <Link
           href="/"
+          transitionTypes={AFUERA}
           className="cifra text-[11px] uppercase tracking-[0.14em] text-tinta-400 hover:text-tinta-900 transition-colors"
         >
           ← Morrogallo
@@ -193,7 +197,7 @@ export default async function Estadisticas({
         {error ? (
           <p
             role="alert"
-            className="mt-8 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
+            className="aviso mt-8 border border-estrella-500/40 bg-white px-4 py-3 text-sm text-estrella-600"
           >
             {error}
           </p>
@@ -202,7 +206,7 @@ export default async function Estadisticas({
         {aviso ? (
           <p
             role="status"
-            className="mt-8 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
+            className="aviso mt-8 border border-monte-400/50 bg-white px-4 py-3 text-sm text-monte-600"
           >
             {aviso}
           </p>
@@ -444,6 +448,8 @@ export default async function Estadisticas({
         </div>
       </div>
     </main>
+
+      </Transicion>
 
       <Footer />
     </>
