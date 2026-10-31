@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# códigos de respaldo de cuentas: nunca al repo
+Backup-codes-*.txt
