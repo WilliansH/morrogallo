@@ -179,10 +179,20 @@ async function euroDesdeDolarApi(): Promise<TasaBcv | null> {
  * oficial, así que en ese caso `calculado` va en true y el sitio lo marca.
  */
 export async function consultarEuroBcv(): Promise<(TasaBcv & { calculado: boolean }) | null> {
-  const oficial = await euroDesdeDolarApi();
-  if (oficial) return { ...oficial, calculado: false };
+  const [oficial, dolar] = await Promise.all([euroDesdeDolarApi(), consultarTasaBcv()]);
 
-  const [dolar, paridad] = await Promise.all([consultarTasaBcv(), paridadEurUsd()]);
+  /*
+   * El euro en bolívares tiene que andar cerca del dólar en bolívares: su
+   * cociente es la paridad euro/dólar. Si no lo es, la fuente mandó otra cosa.
+   * Ya pasó: ve.dolarapi.com devolvió 1.006 (la paridad misma) como si fueran
+   * bolívares por euro, y el sitio mostró la UCD en 1,01. Sin dólar con qué
+   * comparar no hay cómo saberlo, así que tampoco se le cree.
+   */
+  if (oficial && dolar && esParidad(oficial.valor / dolar.valor)) {
+    return { ...oficial, calculado: false };
+  }
+
+  const paridad = await paridadEurUsd();
 
   if (!dolar || paridad === null) return null;
 
